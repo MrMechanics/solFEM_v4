@@ -50,9 +50,9 @@ for the Finite Element Analysis.
 						  '316_stainless_steel (mm kg mN kPa)':	{'Elasticity': 193e6, 'Poisson ratio': 0.27, 'Density': 7.87e-6},
 						  'Grade2_titanium (mm kg mN kPa)':	 	{'Elasticity': 105e6, 'Poisson ratio': 0.37, 'Density': 4.51e-6}}
         self.sections = {}
-        self.parts = { 'part-1': Part('part-1') }
+        self.parts = {}
 
-        self.currentPart = self.parts['part-1']
+        self.currentPart = None
         self.currentSolution = None
         self.currentResults = {'solution': None, 'result': None, 'subresult': None}
 

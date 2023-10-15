@@ -857,7 +857,34 @@ is an OpenGL widget running inside this framework.
     def openFile(self):
         print('NOT READY!')
     def importFrom(self):
-        print('NOT READY!')
+        '''
+    Import meshes, solutions, boundaries, loads, 
+    elementsets and nodesets from a *.sol file,
+    *.out file or *.mesh file with the help of PyQt's
+    built-in QFileDialog class. 
+    '''
+        filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', './')[0]
+        part_name = 'part-'+str(len(self.model.parts))
+        self.model.parts[part_name] = Part(part_name)
+        if filename[-4:] == '.out':
+            print('\n\tImport mesh from *.out file not ready')
+        elif filename[-4:] == '.sol':
+            self.model.parts[part_name].importMesh(filename)
+        elif filename[-4:] == '.bdf':
+            self.model.parts[part_name].importMesh(filename)
+        elif filename[-4:] == '.inp':
+            self.model.parts[part_name].importMesh(filename)
+        elif filename[-4:] == '.dat':
+            self.model.parts[part_name].importMesh(filename)
+        elif filename[-4:] in ['.stp', '.STP']:
+            self.model.parts[part_name].readStepFile(filename)
+        elif filename[-5:] in ['.step', '.STEP']:
+            self.model.parts[part_name].readStepFile(filename)
+        elif filename[-4:] == '.mdl':
+            print('\n\tImport from *.mdl file not ready.')
+        else:
+            print('\n\tUnknown file type. Accepted files are:')
+            print('\t*.sol, *.bdf, *.inp, *.dat, *.STP, *.STEP, *.mdl')
     def exportMesh(self):
         print('NOT READY!')
     def saveFile(self):
