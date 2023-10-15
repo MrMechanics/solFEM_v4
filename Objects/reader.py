@@ -75,6 +75,10 @@ for easy access by the Part object.
         print('\n  x-min:', x_min, '\tx-max:', x_max)
         print('  y-min:', y_min, '\ty-max:', y_max)
         print('  z-min:', z_min, '\tz-max:', z_max)
+        self.center_of_mass = (0., 0., 0.)
+        print('\n  Center of mass:', self.center_of_mass)
+        self.volume = 0.
+        print('  Volume:', self.volume)
         print('\\----- ---------- ------  --------- ------/')
 
         
@@ -518,7 +522,7 @@ for easy access by the Part object.
 
 
 
-class InputData(object):
+class SolFileData(object):
     '''
 Class for input read from *.sol-files. This object
 reads the data from the *.sol-file into a format that
@@ -1340,5 +1344,5 @@ is accessible to the FEModel object.
 
 
 if __name__ == '__main__':
-    stpf = StepFileData('beam.step')
+    stpf = StepFileData('beam_SW.step')
         

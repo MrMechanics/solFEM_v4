@@ -276,13 +276,13 @@ and multiply with other quaternions.
 
 
 class Line(object):
-    def __init__(self,number,points):
+    def __init__(self,number):
         self.number = number
+        self.type   = 'line'
         self.points = []
-        self.newPoints(points)
     def newPoints(self,points):
         for p in points:
-            self.points.append(Point3D(p.x(),p.y(),p.z()))
+            self.points.append(Point3D(p[0],p[1],p[2]))
     def length(self):
         pass
     
@@ -291,10 +291,17 @@ class Line(object):
 
 
 class Arc(Line):
-    def __init__(self,number,points,radius,center,axis):
-        super(Arc,self).__init__(number,points)
+    def __init__(self,number):
+        super(Arc,self).__init__(number)
+        self.type   = 'arc'
+        self.radius = None
+        self.center = None
+        self.axis   = None
+    def setRadius(self,radius):
         self.radius = radius
+    def setCenter(self,center):
         self.center = Point3D(center.x(),center.y(),center.z())
+    def setAxis(self,axis):
         self.axis = CoordSys3D(self.center,axis.x_vec,axis.y_vec)
     def length(self):
         pass
@@ -304,8 +311,9 @@ class Arc(Line):
 
 
 class Spline(Line):
-    def __init__(self,number,points):
-        super(Spline,self).__init__(number,points)
+    def __init__(self,number):
+        super(Spline,self).__init__(number)
+        self.type   = 'Spline'
     def length(self):
         pass
 
@@ -314,16 +322,21 @@ class Spline(Line):
 
 
 class Edge(object):
-    def __init__(self,lines):
-        self.lines = lines
+    def __init__(self,number):
+        self.number = number
+        self.lines  = {}
+        self.points = {}
 
     
 
 
 
 class Face(object):
-    def __init__(self,edges):
-        self.edges = edges
+    def __init__(self,number,face_type):
+        self.number = number
+        self.edges  = {}
+        self.points = {}
+        self.type   = face_type
     def normal(self):
         pass
 
