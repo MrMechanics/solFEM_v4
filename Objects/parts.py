@@ -9,6 +9,8 @@
 #   from mesh files, or mesh built from scratch.
 #
 
+import numpy as np
+
 from geometries import *
 from meshes import *
 from reader import *
@@ -56,13 +58,23 @@ user to interact with.
         self.shell = {}
         self.solid = {}
 
+        self.view_scope = {'max': [ 1., 1., 1.],
+                           'min': [-1.,-1.,-1.]}
+        self.view_radius = 2.
+        self.colors = {'part_lines':         (0.05, 0.10, 0.05, 1.0),
+                       'part_faces':         (0.32, 0.43, 0.49, 1.0),
+                       'element_lines_pre':  (0.50, 0.50, 0.50, 1.0),
+                       'element_lines_post': (0.50, 0.50, 0.50, 1.0),
+                       'element_faces_pre':  (0.50, 0.50, 0.50, 1.0),
+                       'element_faces_post': (0.50, 0.50, 0.50, 1.0)}
         self.displayLists = {'nodes':       None,
                              'wireframe':   None,
                              'shaded':      None,
                              'lines':       None,
                              'faces':       None,
                              'seeds':       None}
-
+        
+        
 
     def readStepFile(self,filename):
         '''
@@ -97,28 +109,42 @@ user to interact with.
                 self.faces[f].edges[e] = self.edges[e]
 
                 # edge lines
-                for l in geom.edge_loop[bound[e][0]]:
+                for edge_loop in geom.edge_loop[bound[e][0]]:
+                    l = geom.oriented_edge[edge_loop][2]
                     if l not in self.lines:
                         # line type
-                        if geom.edge_curve[geom.oriented_edge[l][2]][2] in geom.line:
+                        if geom.edge_curve[l][2] in geom.line:
                             self.lines[l] = Line(l)
-                            p1 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[geom.oriented_edge[l][2]][0]]]
-                            p2 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[geom.oriented_edge[l][2]][1]]]
+                            p1 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[l][0]]]
+                            p2 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[l][1]]]
                             self.lines[l].newPoints([p1,p2])
-                        elif geom.edge_curve[geom.oriented_edge[l][2]][2] in geom.circle:
+                        elif geom.edge_curve[l][2] in geom.circle:
                             self.lines[l] = Arc(l)
-                            self.lines[l].newPoints()
-                            self.lines[l].setRadius()
-                            self.lines[l].setCenter()
-                            self.lines[l].setAxis()
-                        elif geom.edge_curve[geom.oriented_edge[l][2]][2] in geom.b_spline_curve:
+                            p1 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[l][0]]]
+                            p2 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[l][1]]]
+                            r = geom.circle[geom.edge_curve[l][2]][1]
+                            c = geom.cartesian_point[geom.axis2_placement_3D[geom.circle[geom.edge_curve[l][2]][0]][0]]
+                            z_vec = geom.direction[geom.axis2_placement_3D[geom.circle[geom.edge_curve[l][2]][0]][1]]
+                            x_vec = geom.direction[geom.axis2_placement_3D[geom.circle[geom.edge_curve[l][2]][0]][2]]
+                            y_vec = np.cross(z_vec,x_vec)
+                            self.lines[l].setRadius(r)
+                            self.lines[l].setCenter(c)
+                            self.lines[l].setAxis(x_vec,y_vec)
+                            self.lines[l].newPoints([p1,p2])
+                        elif geom.edge_curve[l][2] in geom.b_spline_curve:
                             self.lines[l] = Spline(l)
                         else:
                             print('\nUNKNOWN line type for line number:', l)
 
                     self.edges[e].lines[l] = self.lines[l]
 
-        self.updateDisplayList('geometry')
+        print('len(self.lines):', len(self.lines))
+
+        self.view_radius = max((geom.x_max - geom.x_min, geom.y_max - geom.y_min, geom.z_max-geom.z_min))*0.5
+        self.view_scope = {'max': [geom.x_max, geom.y_max, geom.z_max],
+                           'min': [geom.x_min, geom.y_min, geom.z_min]}
+        self.generateDisplayLists('geometry')
+
 
 
     
@@ -134,27 +160,37 @@ user to interact with.
     
     
     
-    def updateDisplayList(self,displ_type='geometry'):
+    def generateDisplayLists(self,displ_type='geometry'):
         '''
     Generates an updated displaylist for the part to
     be rendered in the viewer.
     '''
         if displ_type == 'geometry':
-    		self.displayLists['lines'] = glGenLists(1)
-#    		self.displayLists['faces'] = glGenLists(1)
-#    		self.displayLists['seeds'] = glGenLists(1)
+            self.displayLists['lines'] = glGenLists(1)
+#            self.displayLists['faces'] = glGenLists(1)
+#            self.displayLists['seeds'] = glGenLists(1)
 
-    		glNewList(self.displayLists['lines'], GL_COMPILE)
-    		glLineWidth(3.0)
+            glNewList(self.displayLists['lines'], GL_COMPILE)
+            glLineWidth(3.0)
+            glColor3f(self.colors['part_lines'][0], 
+                      self.colors['part_lines'][1],
+                      self.colors['part_lines'][2])
             for l in self.lines:
                 if self.lines[l].type == 'line':
-    				glBegin(GL_LINES)
-    				glColor3f(0.05, 0.1, 0.05)
-    				glVertex3f(self.lines[l].points[0].x(),self.lines[l].points[0].y(),self.lines[l].points[0].z())
-    				glVertex3f(self.lines[l].points[1].x(),self.lines[l].points[1].y(),self.lines[l].points[1].z())
-    				glEnd()
+                    glBegin(GL_LINES)
+                    glVertex3f(self.lines[l].points[0].x(),self.lines[l].points[0].y(),self.lines[l].points[0].z())
+                    glVertex3f(self.lines[l].points[1].x(),self.lines[l].points[1].y(),self.lines[l].points[1].z())
+                    glEnd()
+                elif self.lines[l].type == 'arc':
+                    for p in range(len(self.lines[l].points)-1):
+                        glBegin(GL_LINES)
+                        glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
+                        glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                        glEnd()
+                else:
+                    pass
 
-    		glEndList()
+            glEndList()
 
             
             

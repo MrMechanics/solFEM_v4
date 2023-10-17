@@ -56,25 +56,25 @@ for easy access by the Part object.
             print('Unknown model type')
         print('\n  Number of faces: ', len(self.advanced_face))
         print('  Number of vertices: ', len(self.vertex_point))
-        x_min = x_max = y_min = y_max = z_min = z_max = 0.
+        self.x_min = self.x_max = self.y_min = self.y_max = self.z_min = self.z_max = 0.
         for p in self.cartesian_point:
-            if self.cartesian_point[p][0] < x_min:
-                x_min = self.cartesian_point[p][0]
-            if self.cartesian_point[p][0] > x_max:
-                x_max = self.cartesian_point[p][0]
-            if self.cartesian_point[p][1] < y_min:
-                y_min = self.cartesian_point[p][1]
-            if self.cartesian_point[p][1] > y_max:
-                y_max = self.cartesian_point[p][1]
+            if self.cartesian_point[p][0] < self.x_min:
+                self.x_min = self.cartesian_point[p][0]
+            if self.cartesian_point[p][0] > self.x_max:
+                self.x_max = self.cartesian_point[p][0]
+            if self.cartesian_point[p][1] < self.y_min:
+                self.y_min = self.cartesian_point[p][1]
+            if self.cartesian_point[p][1] > self.y_max:
+                self.y_max = self.cartesian_point[p][1]
             if len(self.cartesian_point[p]) > 2:
-                if self.cartesian_point[p][2] < z_min:
-                    z_min = self.cartesian_point[p][2]
-                if self.cartesian_point[p][2] > z_max:
-                    z_max = self.cartesian_point[p][2]
+                if self.cartesian_point[p][2] < self.z_min:
+                    self.z_min = self.cartesian_point[p][2]
+                if self.cartesian_point[p][2] > self.z_max:
+                    self.z_max = self.cartesian_point[p][2]
 
-        print('\n  x-min:', x_min, '\tx-max:', x_max)
-        print('  y-min:', y_min, '\ty-max:', y_max)
-        print('  z-min:', z_min, '\tz-max:', z_max)
+        print('\n  x-min:', self.x_min, '\tx-max:', self.x_max)
+        print('  y-min:', self.y_min, '\ty-max:', self.y_max)
+        print('  z-min:', self.z_min, '\tz-max:', self.z_max)
         self.center_of_mass = (0., 0., 0.)
         print('\n  Center of mass:', self.center_of_mass)
         self.volume = 0.
@@ -88,7 +88,7 @@ for easy access by the Part object.
         self.direction = {}
         self.vertex_point = {}
         self.vector = {}
-        self.axis2_place_3D = {}
+        self.axis2_placement_3D = {}
         self.line = {}
         self.circle = {}
         self.b_spline_curve = {}
@@ -127,7 +127,7 @@ for easy access by the Part object.
                         elif data_type == "VECTOR":
                             self.vector[index] = data
                         elif data_type == "AXIS2_PLACEMENT_3D":
-                            self.axis2_place_3D[index] = data 
+                            self.axis2_placement_3D[index] = data 
                         elif data_type == "LINE":
                             self.line[index] = data
                         elif data_type == "CIRCLE":
@@ -1344,5 +1344,5 @@ is accessible to the FEModel object.
 
 
 if __name__ == '__main__':
-    stpf = StepFileData('beam_SW.step')
+    stpf = StepFileData('Part3_SW.step')
         

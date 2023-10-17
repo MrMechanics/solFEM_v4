@@ -13,6 +13,7 @@
 
 
 import math
+import numpy as np
 
 
 
@@ -280,11 +281,11 @@ class Line(object):
         self.number = number
         self.type   = 'line'
         self.points = []
+        self.length = 0.
     def newPoints(self,points):
         for p in points:
             self.points.append(Point3D(p[0],p[1],p[2]))
-    def length(self):
-        pass
+        self.length = (self.points[1].__sub__(self.points[0])).length()
     
     
     
@@ -300,11 +301,93 @@ class Arc(Line):
     def setRadius(self,radius):
         self.radius = radius
     def setCenter(self,center):
-        self.center = Point3D(center.x(),center.y(),center.z())
-    def setAxis(self,axis):
-        self.axis = CoordSys3D(self.center,axis.x_vec,axis.y_vec)
-    def length(self):
-        pass
+        self.center = Point3D(center[0],center[1],center[2])
+    def setAxis(self,x_vec,y_vec):
+        self.axis = CoordSys3D(self.center,Vector3D(x_vec[0],x_vec[1],x_vec[2]),
+                                           Vector3D(y_vec[0],y_vec[1],y_vec[2]))
+    def newPoints(self,points):
+        radi = self.radius
+        orig = (self.center.x(),self.center.y(),self.center.z())
+        xvec = (self.axis.x_vec.x(),self.axis.x_vec.y(),self.axis.x_vec.z())
+        yvec = (self.axis.y_vec.x(),self.axis.y_vec.y(),self.axis.y_vec.z())
+        zvec = (self.axis.z_vec.x(),self.axis.z_vec.y(),self.axis.z_vec.z())
+        pnts = 36
+        pnt1 = points[0]
+        pnt2 = points[1]
+        vrts = []
+        if pnt1 == pnt2:
+            self.length = 2*np.pi*radi
+            for v in range(pnts):
+                d = pnts/(v+1)
+                vc = np.cos(2*np.pi/d)
+                vs = np.sin(2*np.pi/d)
+                self.points.append(Point3D(orig[0]+vs*yvec[0]*radi+vc*xvec[0]*radi,
+                                           orig[1]+vs*yvec[1]*radi+vc*xvec[1]*radi,
+                                           orig[2]+vs*yvec[2]*radi+vc*xvec[2]*radi))
+            self.angle1 = 0
+            self.angle2 = 2*np.pi
+            self.d_angle = 2*np.pi
+        else:
+            # calculate angles
+            pnt0 = (orig[0]+xvec[0]*radi, orig[1]+xvec[1]*radi, orig[2]+xvec[2]*radi)
+            v0 = [pnt0[0]-orig[0],pnt0[1]-orig[1],pnt0[2]-orig[2]]
+            v0 = v0 / np.linalg.norm(v0)
+            v1 = [pnt1[0]-orig[0],pnt1[1]-orig[1],pnt1[2]-orig[2]]
+            v1 = v1 / np.linalg.norm(v1)
+            v2 = [pnt2[0]-orig[0],pnt2[1]-orig[1],pnt2[2]-orig[2]]
+            v2 = v2 / np.linalg.norm(v2)
+            dot_product1 = np.dot(v0,v1)
+            dot_product1 = np.clip(dot_product1,-1,1)
+            ang1 = np.arccos(dot_product1)
+            dot_product2 = np.dot(v0,v2)
+            dot_product2 = np.clip(dot_product2,-1,1)
+            ang2 = np.arccos(dot_product2)
+
+            # check if angles are larger than 180 degrees
+            v0_test = np.cross(v0,yvec)/np.linalg.norm(np.cross(v0,yvec))
+            if not np.all(np.cross(v0,v1) == 0):
+                v1_test = np.cross(v0,v1)/np.linalg.norm(np.cross(v0,v1))
+            else:
+                v1_test = v0_test
+            if not np.all(np.cross(v0,v2) == 0):
+                v2_test = np.cross(v0,v2)/np.linalg.norm(np.cross(v0,v2))
+            else:
+                v2_test = v0_test
+
+            check1 = (v0_test == v1_test)
+            if not np.all(check1 == True):
+                ang1 = 2*np.pi-ang1
+                
+            check2 = (v0_test == v2_test)
+            if not np.all(check2 == True):
+                ang2 = 2*np.pi-ang2
+                    
+
+            d_ang = ang2-ang1
+            if ang1 > ang2:
+                d_ang = (2*np.pi-ang1)+ang2
+            self.length = abs(d_ang)*radi
+            self.angle1 = ang1
+            self.angle2 = ang2
+            self.d_angle = d_ang
+            pnts = abs(math.floor((18/(np.pi))*d_ang))
+            if pnts == 0:
+                pnts = 2
+            vc = np.cos(ang1)
+            vs = np.sin(ang1)
+            self.points.append(Point3D(orig[0]+vs*yvec[0]*radi+vc*xvec[0]*radi,
+                                       orig[1]+vs*yvec[1]*radi+vc*xvec[1]*radi,
+                                       orig[2]+vs*yvec[2]*radi+vc*xvec[2]*radi))
+            for v in range(pnts):
+                d = pnts/(v+1)
+                vc = np.cos(ang1 + (d_ang)/d)
+                vs = np.sin(ang1 + (d_ang)/d)
+                if v == pnts-1:
+                    vc = np.cos(ang2)
+                    vs = np.sin(ang2)
+                self.points.append(Point3D(orig[0]+vs*yvec[0]*radi+vc*xvec[0]*radi,
+                                           orig[1]+vs*yvec[1]*radi+vc*xvec[1]*radi,
+                                           orig[2]+vs*yvec[2]*radi+vc*xvec[2]*radi))
     
     
     
@@ -314,8 +397,6 @@ class Spline(Line):
     def __init__(self,number):
         super(Spline,self).__init__(number)
         self.type   = 'Spline'
-    def length(self):
-        pass
 
 
 
