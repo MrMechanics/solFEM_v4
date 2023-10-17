@@ -41,14 +41,14 @@ for the Finite Element Analysis.
 
         self.interface = interface
         
-        self.materials = {'6061-T6_aluminum (m kg N)': 	 		{'Elasticity': 689e8, 'Poisson ratio': 0.35, 'Density':   2700.},
-						  '1010_carbon_steel (m kg N)':	 		{'Elasticity': 205e9, 'Poisson ratio': 0.29, 'Density':   7870.},
-						  '316_stainless_steel (m kg N)':   	{'Elasticity': 193e9, 'Poisson ratio': 0.27, 'Density':   7870.},
-						  'Grade2_titanium (m kg N)':			{'Elasticity': 105e9, 'Poisson ratio': 0.37, 'Density':   4510.},
-						  '6061-T6_aluminum (mm kg mN kPa)':	{'Elasticity': 689e5, 'Poisson ratio': 0.35, 'Density':  2.7e-6},
-						  '1010_carbon_steel (mm kg mN kPa)':	{'Elasticity': 205e6, 'Poisson ratio': 0.29, 'Density': 7.87e-6},
-						  '316_stainless_steel (mm kg mN kPa)':	{'Elasticity': 193e6, 'Poisson ratio': 0.27, 'Density': 7.87e-6},
-						  'Grade2_titanium (mm kg mN kPa)':	 	{'Elasticity': 105e6, 'Poisson ratio': 0.37, 'Density': 4.51e-6}}
+        self.materials = {'6061-T6_aluminum (m kg N)':              {'Elasticity': 689e8, 'Poisson ratio': 0.35, 'Density':   2700.},
+                          '1010_carbon_steel (m kg N)':             {'Elasticity': 205e9, 'Poisson ratio': 0.29, 'Density':   7870.},
+                          '316_stainless_steel (m kg N)':       {'Elasticity': 193e9, 'Poisson ratio': 0.27, 'Density':   7870.},
+                          'Grade2_titanium (m kg N)':            {'Elasticity': 105e9, 'Poisson ratio': 0.37, 'Density':   4510.},
+                          '6061-T6_aluminum (mm kg mN kPa)':    {'Elasticity': 689e5, 'Poisson ratio': 0.35, 'Density':  2.7e-6},
+                          '1010_carbon_steel (mm kg mN kPa)':    {'Elasticity': 205e6, 'Poisson ratio': 0.29, 'Density': 7.87e-6},
+                          '316_stainless_steel (mm kg mN kPa)':    {'Elasticity': 193e6, 'Poisson ratio': 0.27, 'Density': 7.87e-6},
+                          'Grade2_titanium (mm kg mN kPa)':         {'Elasticity': 105e6, 'Poisson ratio': 0.37, 'Density': 4.51e-6}}
         self.sections = {}
         self.parts = {}
 
@@ -64,12 +64,22 @@ for the Finite Element Analysis.
         self.selected_lines = {}
         self.facesSelected = False
         self.selected_faces = {}
-        self.selectOption = 'Nodes'
-		
+        self.selectOption = 'lines'
+        
         self.results = {}
         self.scaleShearBendDiagram = 1.
         self.scale_factor = 20.
-        self.displayLists = {}
+        self.colors = {'selected':       (1.00, 0.00, 0.00, 1.0),
+                       'loads':          (0.50, 0.50, 0.50, 1.0),
+                       'displacements':  (0.50, 0.50, 0.50, 1.0),
+                       'constraints':    (0.50, 0.50, 0.50, 1.0)}
+        self.displayLists = {'selected_nodes': None,
+                             'selected_elements': None,
+                             'selected_lines': None,
+                             'selected_faces': None,
+                             'solutions': {}}
+
+
 
 
     def clearModel(self):
@@ -80,5 +90,49 @@ for the Finite Element Analysis.
         pass
     
     
-    
+
+    def setCurrentPart(self,part_name):
+        '''
+    Sets the current Part to part_name so the FEmodel knows what
+    part is currently active, and the viewer knows what part to
+    render if not viewing assembly.
+    '''
+        self.currentPart = self.parts[part_name]
+        self.interface.viewer.updateDisplayList()
+        
+           
+
+    def selectedFeaturesDisplayList(self):
+        '''
+    Create a displaylist for the currently selected
+    lines, faces, nodes or elements.
+    '''
+        if self.selectOption == 'lines':
+            if len(self.selected_lines) != 0:
+                self.linesSelected = True
+                self.displayLists['selected_lines'] = glGenLists(1)
+                glNewList(self.displayLists['selected_lines'], GL_COMPILE)
+                glLineWidth(5.0)
+                glColor3f(self.colors['selected'][0],
+                          self.colors['selected'][1],
+                          self.colors['selected'][2])
+                for line in self.selected_lines:
+                    for point in range(len(self.selected_lines[line].points)-1):
+                        glBegin(GL_LINES)
+                        coord = self.selected_lines[line].points[point]
+                        glVertex3f(coord.x(),coord.y(),coord.z())
+                        coord = self.selected_lines[line].points[point+1]
+                        glVertex3f(coord.x(),coord.y(),coord.z())
+                        glEnd()
+                glEndList()        
+            
+        if self.selectOption == 'faces':
+            pass
+        if self.selectOption == 'nodes':
+            glPointSize(10.0)
+        else:
+            pass
+
+
+
     

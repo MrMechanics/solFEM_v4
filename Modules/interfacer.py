@@ -8,7 +8,6 @@
 #
 #
 
-
 import sys
 import re
 
@@ -58,7 +57,7 @@ is an OpenGL widget running inside this framework.
         exit.setShortcut('Ctrl+Q')
         exit.setStatusTip('Exit application')
         exit.triggered.connect(self.close)
-		
+        
         newsession = QtWidgets.QAction(QtGui.QIcon('../Icons/icon_new_file.png'),'New', self)
         newsession.setStatusTip('Clear out current session')
         newsession.triggered.connect(self.clearModel)
@@ -132,7 +131,7 @@ is an OpenGL widget running inside this framework.
         centerview.triggered.connect(self.centerModel)
         centerview.triggered.connect(self.viewer.camera.reset)
         centerview.triggered.connect(self.viewer.update)
-		
+        
         viewleft = QtWidgets.QAction(QtGui.QIcon(''), 'View Left', self)
         viewleft.setShortcut('1')
         viewleft.setStatusTip('View Left')
@@ -202,7 +201,7 @@ is an OpenGL widget running inside this framework.
         origin.setShortcut('O')
         origin.setStatusTip('Show origin coordinate system')
         origin.triggered.connect(self.showOrigin)
-		
+        
         meshtree = QtWidgets.QAction(QtGui.QIcon('../Icons/icon_empty.png'),'Mesh Tree', self)
         meshtree.setShortcut('H')
         meshtree.setStatusTip('Toggle Mesh Tree On/Off')
@@ -376,7 +375,7 @@ is an OpenGL widget running inside this framework.
         spiderlock = QtWidgets.QAction(QtGui.QIcon('../Icons/icon_spider.png'),'Spider', self)
         spiderlock.setStatusTip('Create a spider between one node and a set of nodes')
         spiderlock.triggered.connect(self.createSpider)
-		
+        
         uniformload = QtWidgets.QAction(QtGui.QIcon('../Icons/icon_uniform_load.png'),'Uniform Load', self)
         uniformload.setStatusTip('Apply uniform load to nodeset')
         uniformload.triggered.connect(self.applyUniformLoad)
@@ -384,7 +383,7 @@ is an OpenGL widget running inside this framework.
         concentratedload = QtWidgets.QAction(QtGui.QIcon('../Icons/icon_concentrated_load.png'),'Concentrated Load', self)
         concentratedload.setStatusTip('Apply concentrated load to nodeset')
         concentratedload.triggered.connect(self.applyConcentratedLoad)
-		
+        
         distributedload = QtWidgets.QAction(QtGui.QIcon('../Icons/icon_distributed_load.png'),'Distributed Load', self)
         distributedload.setStatusTip('Apply distributed load to elementset (beam elements only)')
         distributedload.triggered.connect(self.applyDistributedLoad)
@@ -827,6 +826,7 @@ is an OpenGL widget running inside this framework.
 
         self.centerWindow()
         self.resize(1200,800)
+        self.viewAngled()
 
 
     def centerWindow(self):
@@ -864,8 +864,9 @@ is an OpenGL widget running inside this framework.
     built-in QFileDialog class. 
     '''
         filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', './')[0]
-        part_name = 'part-'+str(len(self.model.parts))
+        part_name = 'part-'+str(len(self.model.parts)+1)
         self.model.parts[part_name] = Part(part_name)
+        
         if filename[-4:] == '.out':
             print('\n\tImport mesh from *.out file not ready')
         elif filename[-4:] == '.sol':
@@ -885,6 +886,10 @@ is an OpenGL widget running inside this framework.
         else:
             print('\n\tUnknown file type. Accepted files are:')
             print('\t*.sol, *.bdf, *.inp, *.dat, *.STP, *.STEP, *.mdl')
+
+        self.model.setCurrentPart(part_name)
+        self.viewAngled()
+
     def exportMesh(self):
         print('NOT READY!')
     def saveFile(self):
@@ -1036,9 +1041,9 @@ is an OpenGL widget running inside this framework.
         else:
             self.viewer.modelCentered = True
             self.viewer.coordSys0_centered = CoordSys3D( \
-                 Point3D(-(self.viewer.currentDisplayList['view scope']['max'][0]+self.viewer.currentDisplayList['view scope']['min'][0])/2.,
-                         -(self.viewer.currentDisplayList['view scope']['max'][1]+self.viewer.currentDisplayList['view scope']['min'][1])/2.,
-                         -(self.viewer.currentDisplayList['view scope']['max'][2]+self.viewer.currentDisplayList['view scope']['min'][2])/2.),
+                 Point3D(-(self.viewer.currentDisplayList['view_scope']['max'][0]+self.viewer.currentDisplayList['view_scope']['min'][0])/2.,
+                         -(self.viewer.currentDisplayList['view_scope']['max'][1]+self.viewer.currentDisplayList['view_scope']['min'][1])/2.,
+                         -(self.viewer.currentDisplayList['view_scope']['max'][2]+self.viewer.currentDisplayList['view_scope']['min'][2])/2.),
                      Vector3D(1.,0.,0.),Vector3D(0.,1.,0.))
     def viewLeft(self):
         '''
@@ -1247,8 +1252,11 @@ is an OpenGL widget running inside this framework.
             self.viewer.viewAssembly = True
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  ASSEMBLY  ')
-#		glClearColor(0.33, 0.43, 0.33, 1.0)
-#		glClearDepth(1.0)
+        glClearColor(self.viewer.colors['background_pre'][0], 
+                     self.viewer.colors['background_pre'][1], 
+                     self.viewer.colors['background_pre'][2], 
+                     self.viewer.colors['background_pre'][3])
+        glClearDepth(1.0)
         self.viewer.update()
 
     def btnViewGeometryAction(self):
@@ -1257,20 +1265,26 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewResults = False
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  GEOMETRY  ')
-#		glClearColor(0.33, 0.43, 0.33, 1.0)
-#		glClearDepth(1.0)
+        glClearColor(self.viewer.colors['background_pre'][0], 
+                     self.viewer.colors['background_pre'][1], 
+                     self.viewer.colors['background_pre'][2], 
+                     self.viewer.colors['background_pre'][3])
+        glClearDepth(1.0)
         self.viewer.update()
-		
+        
     def btnViewMeshAction(self):
         self.viewer.viewGeometry = False
         self.viewer.viewMesh = True
         self.viewer.viewResults = False
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  MESH  ')
-#		glClearColor(0.33, 0.43, 0.33, 1.0)
-#		glClearDepth(1.0)
+        glClearColor(self.viewer.colors['background_pre'][0], 
+                     self.viewer.colors['background_pre'][1], 
+                     self.viewer.colors['background_pre'][2], 
+                     self.viewer.colors['background_pre'][3])
+        glClearDepth(1.0)
         self.viewer.update()
-		
+        
     def btnViewConstraintAction(self):
         self.viewer.viewResults = False
         self.viewer.viewBoundaries = False
@@ -1279,8 +1293,13 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewSolutions = False
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  CONSTRAINTS  ')
+        glClearColor(self.viewer.colors['background_pre'][0], 
+                     self.viewer.colors['background_pre'][1], 
+                     self.viewer.colors['background_pre'][2], 
+                     self.viewer.colors['background_pre'][3])
+        glClearDepth(1.0)
         self.viewer.update()
-		
+        
     def btnViewBoundaryAction(self):
         self.viewer.viewResults = False
         self.viewer.viewBoundaries = True
@@ -1289,8 +1308,13 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewSolutions = False
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  BOUNDARIES  ')
+        glClearColor(self.viewer.colors['background_pre'][0], 
+                     self.viewer.colors['background_pre'][1], 
+                     self.viewer.colors['background_pre'][2], 
+                     self.viewer.colors['background_pre'][3])
+        glClearDepth(1.0)
         self.viewer.update()
-		
+        
     def btnViewLoadAction(self):
         self.viewer.viewResults = False
         self.viewer.viewBoundaries = False
@@ -1299,18 +1323,28 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewSolutions = False
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  LOADS  ')
+        glClearColor(self.viewer.colors['background_pre'][0], 
+                     self.viewer.colors['background_pre'][1], 
+                     self.viewer.colors['background_pre'][2], 
+                     self.viewer.colors['background_pre'][3])
+        glClearDepth(1.0)
         self.viewer.update()
-		
+        
     def btnViewSolutionAction(self):
         self.viewer.viewResults = False
         self.viewer.viewBoundaries = False
         self.viewer.viewLoads = False
         self.viewer.viewConstraints = False
         self.viewer.viewSolutions = True
-        self.updateDisplayList()
+        self.viewer.updateDisplayList()
         self.statusBar().showMessage('  SOLUTIONS  ')
+        glClearColor(self.viewer.colors['background_pre'][0], 
+                     self.viewer.colors['background_pre'][1], 
+                     self.viewer.colors['background_pre'][2], 
+                     self.viewer.colors['background_pre'][3])
+        glClearDepth(1.0)
         self.viewer.update()
-		
+        
     def btnViewResultAction(self):
         self.viewer.viewGeometry = False
         self.viewer.viewMesh = False
@@ -1319,10 +1353,13 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewLoads = False
         self.viewer.viewConstraints = False
         self.viewer.viewSolutions = False
-        self.updateDisplayList()
+        self.viewer.updateDisplayList()
         self.statusBar().showMessage('  RESULTS  ')
-#		glClearColor(0.336, 0.447, 0.588, 1.0)
-#		glClearDepth(1.0)
+        glClearColor(self.viewer.colors['background_post'][0], 
+                     self.viewer.colors['background_post'][1], 
+                     self.viewer.colors['background_post'][2], 
+                     self.viewer.colors['background_post'][3])
+        glClearDepth(1.0)
         self.viewer.update()
 
 

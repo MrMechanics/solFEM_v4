@@ -16,18 +16,18 @@ from cameras import *
 from geometries import *
 
 try:
-	from OpenGL.GL import *
-	from OpenGL.GLU import *
+    from OpenGL.GL import *
+    from OpenGL.GLU import *
 except:
-	print(' Error PyOpenGL not installed properly!!')
-	sys.exit()
+    print(' Error PyOpenGL not installed properly!!')
+    sys.exit()
 
 try:
-	from PyQt5 import QtGui, QtWidgets, QtCore
-	from PyQt5.QtOpenGL import *
+    from PyQt5 import QtGui, QtWidgets, QtCore
+    from PyQt5.QtOpenGL import *
 except:
-	print(' Error PyQt5 not installed properly!!')
-	sys.exit()
+    print(' Error PyQt5 not installed properly!!')
+    sys.exit()
 
 
 import numpy as np
@@ -54,8 +54,8 @@ animations, loads, etc.
         self.height = 100
 
         self.viewAssembly = False
-        self.viewGeometry = False
-        self.viewMesh = True
+        self.viewGeometry = True
+        self.viewMesh = False
         self.viewBoundaries = False
         self.viewConstraints = False
         self.viewLoads = False
@@ -64,8 +64,8 @@ animations, loads, etc.
         self.viewOrigin = True
         self.viewNodes = False
         self.viewShaded = False
-        self.viewAveraged = False
         self.viewWireframe = True
+        self.viewAveraged = False
         self.viewMeshTree = True
         self.viewAnimate = True
         self.viewFrame = 0
@@ -84,27 +84,29 @@ animations, loads, etc.
         self.selectionRectangleStart = [0,0]
         self.selectionRectangleEnd = [0,0]
 
-        self.currentDisplayList = { 'part':			None,
-                                    'solution': 	'None',
-                                    'result': 		'None',
-                                    'subresult':	'None',
-                                    'info':			'None',
-                                    'avg_info':		'None',
-                                    'max_val':		None,
-                                    'min_val':		None,
-                                    'avg_max_val':	None,
-                                    'avg_min_val':	None,
-                                    'view radius': 	2,
-                                    'view scope':  {'max': [ 1., 1., 1.],
-                                                    'min': [-1.,-1.,-1.] },
-                                    'displaylist': {'orientation':   None,
-                                                    'nodes':		 None,
-                                                    'wireframe':	 None,
-                                                    'shaded':		 None,
-                                                    'average':	     None }}
+        self.colors = {'background_pre':     (0.330, 0.430, 0.330, 1.0),
+                       'background_post':    (0.336, 0.447, 0.588, 1.0)}
+        self.currentDisplayList = { 'part':            'None',
+                                    'solution':     'None',
+                                    'result':         'None',
+                                    'subresult':    'None',
+                                    'info':            'None',
+                                    'avg_info':        'None',
+                                    'max_val':         None,
+                                    'min_val':         None,
+                                    'avg_max_val':     None,
+                                    'avg_min_val':     None,
+                                    'view_radius':       2,
+                                    'view_scope':   {'max': [ 1., 1., 1.],
+                                                     'min': [-1.,-1.,-1.] },
+                                    'displayLists': {'orientation':  None,
+                                                     'nodes':         None,
+                                                     'wireframe':     None,
+                                                     'shaded':         None,
+                                                     'average':         None }}
 
         self.camera = Camera()
-        self.camera.setSceneRadius( self.currentDisplayList['view radius'] )
+        self.camera.setSceneRadius( self.currentDisplayList['view_radius'] )
         self.camera.reset()
         self.modelCentered = False
 
@@ -112,8 +114,15 @@ animations, loads, etc.
         self.coordSys0_centered = CoordSys3D(Point3D(0.,0.,0.),Vector3D(1.,0.,0.),Vector3D(0.,1.,0.))
 
 
+
+
     def paintGL(self):
-        
+        '''
+    Draw all the graphics in the viewer.
+    First the triad to show the current view angle,
+    then the current pre-built 3D displaylists,
+    and finally the 2D informational text overlay.
+    '''
         # Render all 3D objects in viewer
         # -------------------------------
         glMatrixMode( GL_PROJECTION )
@@ -130,8 +139,8 @@ animations, loads, etc.
         glFrontFace( GL_CCW )
         glDisable( GL_LIGHTING )
         glShadeModel( GL_SMOOTH )
-		
-		# for transparent shear and bending moment diagrams
+        
+        # for transparent shear and bending moment diagrams
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
@@ -140,39 +149,39 @@ animations, loads, etc.
         self.view_matrix = glGetDoublev( GL_MODELVIEW_MATRIX )
         
         if self.modelCentered:
-            glTranslatef(-(self.currentDisplayList['view scope']['max'][0]+self.currentDisplayList['view scope']['min'][0])/2.,
-                         -(self.currentDisplayList['view scope']['max'][1]+self.currentDisplayList['view scope']['min'][1])/2.,
-                         -(self.currentDisplayList['view scope']['max'][2]+self.currentDisplayList['view scope']['min'][2])/2.)
+            glTranslatef(-(self.currentDisplayList['view_scope']['max'][0]+self.currentDisplayList['view_scope']['min'][0])/2.,
+                         -(self.currentDisplayList['view_scope']['max'][1]+self.currentDisplayList['view_scope']['min'][1])/2.,
+                         -(self.currentDisplayList['view_scope']['max'][2]+self.currentDisplayList['view_scope']['min'][2])/2.)
 
-        if self.viewOrigin == True:
+        if self.viewOrigin:
             glLineWidth(5.0)
             glColor(1.0, 0.0, 0.0)
             glBegin(GL_LINES)
             glVertex(0.,0.,0.)
-            glVertex(0.15*self.currentDisplayList['view radius'], 0., 0.)
+            glVertex(0.15*self.currentDisplayList['view_radius'], 0., 0.)
             glEnd()
             glColor(0.0, 1.0, 0.0)
             glBegin(GL_LINES)
             glVertex(0.,0.,0.)
-            glVertex(0.,0.15*self.currentDisplayList['view radius'], 0.)
+            glVertex(0.,0.15*self.currentDisplayList['view_radius'], 0.)
             glEnd()
             glColor(0.0, 0.0, 1.0)
             glBegin(GL_LINES)
             glVertex(0.,0.,0.)
-            glVertex(0., 0., 0.15*self.currentDisplayList['view radius'])
+            glVertex(0., 0., 0.15*self.currentDisplayList['view_radius'])
             glEnd()
 
 
 
 
 
-		# Draw RGB triad in left corner
+        # Draw RGB triad in left corner
         # -----------------------------
         glViewport(0, 0, self.width//3, self.height//3)
         if self.modelCentered:
-            glTranslatef((self.currentDisplayList['view scope']['max'][0]+self.currentDisplayList['view scope']['min'][0])/2.,
-                         (self.currentDisplayList['view scope']['max'][1]+self.currentDisplayList['view scope']['min'][1])/2.,
-                         (self.currentDisplayList['view scope']['max'][2]+self.currentDisplayList['view scope']['min'][2])/2.)
+            glTranslatef((self.currentDisplayList['view_scope']['max'][0]+self.currentDisplayList['view_scope']['min'][0])/2.,
+                         (self.currentDisplayList['view_scope']['max'][1]+self.currentDisplayList['view_scope']['min'][1])/2.,
+                         (self.currentDisplayList['view_scope']['max'][2]+self.currentDisplayList['view_scope']['min'][2])/2.)
 
         view_length = -(self.camera.position - self.camera.target).length()
 
@@ -240,6 +249,75 @@ animations, loads, etc.
 
 
 
+        # Render all of the 3D model
+        # --------------------------
+        cDL = self.currentDisplayList
+
+        if self.viewAssembly:
+            pass
+        
+        if self.viewGeometry:
+            pass
+
+        if self.viewMesh:
+            pass
+        
+        if self.viewBoundaries:
+            pass
+        
+        if self.viewConstraints:
+            pass
+        
+        if self.viewLoads:
+            pass
+        
+        if self.viewSolutions:
+            pass
+        
+        if self.viewResults:
+            pass
+        
+        if self.viewNodes:
+            if cDL['displayLists']['nodes'] != None:
+                glCallList(cDL['displayLists']['nodes'])
+
+        if self.viewWireframe:
+            if cDL['displayLists']['wireframe'] != None:
+                glCallList(cDL['displayLists']['wireframe'])
+        else:
+            if cDL['displayLists']['wireframe'] != None:
+                glCallList(cDL['displayLists']['wireframe'])
+            if self.viewAveraged:
+                if cDL['displayLists']['average'] != None:
+                    glCallList(cDL['displayLists']['average'])
+            else:
+                if cDL['displayLists']['shaded'] != None:
+                    glCallList(cDL['displayLists']['shaded'])
+
+
+
+        # Render what is selected
+        # --------------------------
+        if self.model.nodesSelected:
+            pass
+        elif self.model.elementsSelected:
+            pass
+
+        elif self.model.linesSelected:
+            if self.model.displayLists['selected_lines'] != None:
+                glCallList(self.model.displayLists['selected_lines'])
+            else:
+                self.model.selected_lines.clear()
+                self.model.linesSelected = False
+        
+        elif self.model.facesSelected:
+            pass
+        else:
+            pass
+
+
+
+
         # Render all 2D overlay
         # ---------------------
         glClear(GL_DEPTH_BUFFER_BIT)
@@ -255,7 +333,8 @@ animations, loads, etc.
             pass
         if self.viewGeometry:
             glColor3f(1., 1., 1.)
-            self.renderText(40, self.height-40, self.model.currentPart.name, QtGui.QFont( 'helvetica', 18 ) )
+            if self.model.currentPart != None:
+                self.renderText(40, self.height-40, self.model.currentPart.name, QtGui.QFont( 'helvetica', 18 ) )
 #            if self.viewMeshTree:
 #                self.drawGeometryTree()
         elif self.viewMesh:
@@ -311,10 +390,14 @@ animations, loads, etc.
 
         glFlush()
         
+        
 
 
         
     def resizeGL(self, widthInPixels, heightInPixels):
+        '''
+    Resize the viewer.
+    '''
         self.camera.setViewportDimensions(widthInPixels, heightInPixels)
         self.width = widthInPixels
         self.height = heightInPixels
@@ -322,11 +405,24 @@ animations, loads, etc.
 
 
     def initializeGL(self):
-        glClearColor(0.33, 0.43, 0.33, 1.0)
+        '''
+    Initialize the viewer.
+    '''
+        glClearColor(self.colors['background_pre'][0], 
+                     self.colors['background_pre'][1], 
+                     self.colors['background_pre'][2], 
+                     self.colors['background_pre'][3])
         glClearDepth(1.0)
 
 
+
+
     def mouseMoveEvent(self, mouseEvent):
+        '''
+    Update the camera view when holding down the
+    different buttons while dragging the mouse
+    around on the screen.
+    '''
         if int(mouseEvent.buttons()) != QtCore.Qt.NoButton:
             # user is dragging
             delta_x = mouseEvent.x() - self.oldx
@@ -347,6 +443,10 @@ animations, loads, etc.
 
 
     def mouseDoubleClickEvent(self, mouseEvent):
+        '''
+    Clear the model selection variables when the
+    left mousebutton is doubble-clicked.
+    '''
         self.model.selected_elements.clear()
         self.model.elementsSelected = False
         self.model.selected_nodes.clear()
@@ -355,20 +455,44 @@ animations, loads, etc.
 
 
     def mousePressEvent(self, e):
+        '''
+    Update the mouseButtonPressed and
+    selectionRectangleStart variables to say
+    that the left mouse button has been pressed.
+    '''
         if self.mouseButtonPressed == False:
             self.selectionRectangleStart = [e.x(), e.y()]
         self.mouseButtonPressed = True
 
 
     def mouseReleaseEvent(self, e):
+        '''
+    Update the mouseButtonPressed and
+    activeSelection variables to say that
+    the left mouse button has been released.
+    '''
         self.mouseButtonPressed = False
         if self.activeSelection:
-            self.select()
+            if self.model.selectOption in ['nodes', 'elements']:
+                self.model.selected_nodes = self.select()
+            elif self.model.selectOption in ['lines', 'faces']:
+                self.model.selected_lines = self.select()
+            else:
+                pass
+            self.model.selectedFeaturesDisplayList()
             self.activeSelection = False
             self.update()
-		
+        
+        
+        
 
     def select(self):
+        '''
+    Select nodes, elements, lines or faces by
+    clicking the left mouse button and dragging
+    a selection window encompassing what is to
+    be selected.
+    '''
         if self.selectionRectangleEnd[0] < self.selectionRectangleStart[0]:
             x = [self.selectionRectangleEnd[0], self.selectionRectangleStart[0],
                  self.selectionRectangleEnd[0], self.selectionRectangleStart[0]]
@@ -434,43 +558,50 @@ animations, loads, etc.
                     pass
                 else:
                     selected_nodes[node] = meshnodes[node]
+            self.model.selectedFeaturesDisplayList()
             return selected_nodes
 
         elif self.model.selectOption in ['lines', 'faces']: 
+            selected_lines = {}
             if len(self.model.currentPart.lines) != 0:
-                selected_lines = {}
-                partlines = self.currentPart.lines
-                for line in lines:
+                partlines = self.model.currentPart.lines
+                for line in partlines:
                     all_line_points_selected = True
                     for point in range(len(partlines[line].points)):
                         if self.modelCentered:
                             point_to_check = np.array([partlines[line].points[point].x() + self.coordSys0_centered.origin.x(),
                                                        partlines[line].points[point].y() + self.coordSys0_centered.origin.y(),
                                                        partlines[line].points[point].z() + self.coordSys0_centered.origin.z()])
-                    else:
-                        point_to_check = np.array([partlines[line].points[point].x(), 
-                                                   partlines[line].points[point].y(), 
-                                                   partlines[line].points[point].z()])
-                    if np.dot(P[0]-point_to_check,Frustum[0]) < 0:
-                        all_line_points_selected = False
-                        break
-                    elif np.dot(P[1]-point_to_check,Frustum[1]) < 0:
-                        all_line_points_selected = False
-                        break
-                    elif np.dot(P[3]-point_to_check,Frustum[2]) < 0:
-                        all_line_points_selected = False
-                        break
-                    elif np.dot(P[2]-point_to_check,Frustum[3]) < 0:
-                        all_line_points_selected = False
-                        break
-                    else:
-                        pass
-                if all_line_points_selected:
-                    selected_lines[line] = partlines[line]
+                        else:
+                            point_to_check = np.array([partlines[line].points[point].x(), 
+                                                       partlines[line].points[point].y(), 
+                                                       partlines[line].points[point].z()])
+                        if np.dot(P[0]-point_to_check,Frustum[0]) < 0:
+                            all_line_points_selected = False
+                            break
+                        elif np.dot(P[1]-point_to_check,Frustum[1]) < 0:
+                            all_line_points_selected = False
+                            break
+                        elif np.dot(P[3]-point_to_check,Frustum[2]) < 0:
+                            all_line_points_selected = False
+                            break
+                        elif np.dot(P[2]-point_to_check,Frustum[3]) < 0:
+                            all_line_points_selected = False
+                            break
+                        else:
+                            pass
+                    if all_line_points_selected:
+                        selected_lines[line] = partlines[line]
             return selected_lines
 
 
+
+
     def drawRectangle(self):
+        '''
+    Draw a rectangle from where in the viewer the 
+    mouse pointer is clicked to where it is released.
+    '''
         glLineWidth(2.0)
         glColor3f(0., 0., 0.)
 
@@ -489,20 +620,36 @@ animations, loads, etc.
         glDisable(GL_LINE_STIPPLE)
         
         
+        
+        
     def updateDisplayList(self):
+        '''
+    Update the currentDisplayList variable to show the 
+    current geometry or mesh with the selected loads and 
+    boundary conditions, or the selected results.
+    '''
+        cDL = self.currentDisplayList
         if self.viewGeometry:
-            self.currentDisplayList['max_val'] = None
+            if self.model.currentPart != None:
+                cDL['part'] = self.model.currentPart.name
+                cDL['view_radius'] = self.model.currentPart.view_radius
+                cDL['view_scope'] = self.model.currentPart.view_scope
+                cDL['displayLists']['orientation'] = None
+                cDL['displayLists']['nodes'] = self.model.currentPart.displayLists['seeds']
+                cDL['displayLists']['wireframe'] = self.model.currentPart.displayLists['lines']
+                cDL['displayLists']['shaded'] = self.model.currentPart.displayLists['faces']
+                cDL['displayLists']['average'] = None
 
         elif self.viewResults:
             pass
-				
+                
         elif self.viewMesh:
             pass
             
         else:
             pass
-        self.camera.setSceneRadius( self.currentDisplayList['view radius'] )
-        
+
+        self.camera.setSceneRadius( cDL['view_radius'] )
         
         
         
