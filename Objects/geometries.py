@@ -310,11 +310,9 @@ class Arc(Line):
         orig = (self.center.x(),self.center.y(),self.center.z())
         xvec = (self.axis.x_vec.x(),self.axis.x_vec.y(),self.axis.x_vec.z())
         yvec = (self.axis.y_vec.x(),self.axis.y_vec.y(),self.axis.y_vec.z())
-        zvec = (self.axis.z_vec.x(),self.axis.z_vec.y(),self.axis.z_vec.z())
         pnts = 36
         pnt1 = points[0]
         pnt2 = points[1]
-        vrts = []
         if pnt1 == pnt2:
             self.length = 2*np.pi*radi
             for v in range(pnts):
@@ -344,12 +342,16 @@ class Arc(Line):
             ang2 = np.arccos(dot_product2)
 
             # check if angles are larger than 180 degrees
+            # THIS PART OF THE CODE IS SENSITIVE TO HOW MANY
+            # DECIMALS ARE BEING USED IN THE INPUT
+            # MEANING IT ASSUMES FOR EXAMPLE 0. == 1.e-13
+            # SO THE INPUT IS ROUNDED UP BEFOREHAND
             v0_test = np.cross(v0,yvec)/np.linalg.norm(np.cross(v0,yvec))
-            if not np.all(np.cross(v0,v1) == 0):
+            if not np.all(np.cross(v0,v1) == 0.):
                 v1_test = np.cross(v0,v1)/np.linalg.norm(np.cross(v0,v1))
             else:
                 v1_test = v0_test
-            if not np.all(np.cross(v0,v2) == 0):
+            if not np.all(np.cross(v0,v2) == 0.):
                 v2_test = np.cross(v0,v2)/np.linalg.norm(np.cross(v0,v2))
             else:
                 v2_test = v0_test
@@ -362,7 +364,6 @@ class Arc(Line):
             if not np.all(check2 == True):
                 ang2 = 2*np.pi-ang2
                     
-
             d_ang = ang2-ang1
             if ang1 > ang2:
                 d_ang = (2*np.pi-ang1)+ang2
@@ -388,6 +389,36 @@ class Arc(Line):
                 self.points.append(Point3D(orig[0]+vs*yvec[0]*radi+vc*xvec[0]*radi,
                                            orig[1]+vs*yvec[1]*radi+vc*xvec[1]*radi,
                                            orig[2]+vs*yvec[2]*radi+vc*xvec[2]*radi))
+
+
+
+
+class Ellipse(Line):
+    def __init__(self,number):
+        super(Ellipse,self).__init__(number)
+        self.type   = 'ellipse'
+        self.major_radius = None
+        self.minor_radius = None
+        self.center = None
+        self.axis   = None
+    def setRadiuses(self,major_radius, minor_radius):
+        self.major_radius = major_radius
+        self.minor_radius = minor_radius
+    def setCenter(self,center):
+        self.center = Point3D(center[0],center[1],center[2])
+    def setAxis(self,x_vec,y_vec):
+        self.axis = CoordSys3D(self.center,Vector3D(x_vec[0],x_vec[1],x_vec[2]),
+                                           Vector3D(y_vec[0],y_vec[1],y_vec[2]))
+    def newPoints(self,points):
+        rad1 = self.major_radius
+        rad2 = self.minor_radius
+        orig = (self.center.x(),self.center.y(),self.center.z())
+        xvec = (self.axis.x_vec.x(),self.axis.x_vec.y(),self.axis.x_vec.z())
+        yvec = (self.axis.y_vec.x(),self.axis.y_vec.y(),self.axis.y_vec.z())
+        zvec = (self.axis.z_vec.x(),self.axis.z_vec.y(),self.axis.z_vec.z())
+        pnts = 36
+        pnt1 = points[0]
+        pnt2 = points[1]
     
     
     

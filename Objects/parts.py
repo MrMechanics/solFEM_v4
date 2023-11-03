@@ -131,6 +131,20 @@ user to interact with.
                             self.lines[l].setCenter(c)
                             self.lines[l].setAxis(x_vec,y_vec)
                             self.lines[l].newPoints([p1,p2])
+                        elif geom.edge_curve[l][2] in geom.ellipse:
+                            self.lines[l] = Ellipse(l)
+                            p1 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[l][0]]]
+                            p2 = geom.cartesian_point[geom.vertex_point[geom.edge_curve[l][1]]]
+                            r1 = geom.ellipse[geom.edge_curve[l][2]][1]
+                            r2 = geom.ellipse[geom.edge_curve[l][2]][2]
+                            c = geom.cartesian_point[geom.axis2_placement_3D[geom.ellipse[geom.edge_curve[l][2]][0]][0]]
+                            z_vec = geom.direction[geom.axis2_placement_3D[geom.ellipse[geom.edge_curve[l][2]][0]][1]]
+                            x_vec = geom.direction[geom.axis2_placement_3D[geom.ellipse[geom.edge_curve[l][2]][0]][2]]
+                            y_vec = np.cross(z_vec,x_vec)
+                            self.lines[l].setRadius(r1,r2)
+                            self.lines[l].setCenter(c)
+                            self.lines[l].setAxis(x_vec,y_vec)
+                            self.lines[l].newPoints([p1,p2])
                         elif geom.edge_curve[l][2] in geom.b_spline_curve:
                             self.lines[l] = Spline(l)
                         else:

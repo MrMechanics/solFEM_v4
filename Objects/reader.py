@@ -56,21 +56,29 @@ for easy access by the Part object.
             print('Unknown model type')
         print('\n  Number of faces: ', len(self.advanced_face))
         print('  Number of vertices: ', len(self.vertex_point))
-        self.x_min = self.x_max = self.y_min = self.y_max = self.z_min = self.z_max = 0.
-        for p in self.cartesian_point:
-            if self.cartesian_point[p][0] < self.x_min:
-                self.x_min = self.cartesian_point[p][0]
-            if self.cartesian_point[p][0] > self.x_max:
-                self.x_max = self.cartesian_point[p][0]
-            if self.cartesian_point[p][1] < self.y_min:
-                self.y_min = self.cartesian_point[p][1]
-            if self.cartesian_point[p][1] > self.y_max:
-                self.y_max = self.cartesian_point[p][1]
-            if len(self.cartesian_point[p]) > 2:
-                if self.cartesian_point[p][2] < self.z_min:
-                    self.z_min = self.cartesian_point[p][2]
-                if self.cartesian_point[p][2] > self.z_max:
-                    self.z_max = self.cartesian_point[p][2]
+#        self.x_min = self.x_max = self.y_min = self.y_max = self.z_min = self.z_max = 0.
+		
+        self.x_max = max(self.cartesian_point[self.vertex_point[i]][0] for i in self.vertex_point)
+        self.x_min = min(self.cartesian_point[self.vertex_point[i]][0] for i in self.vertex_point)
+        self.y_max = max(self.cartesian_point[self.vertex_point[i]][1] for i in self.vertex_point)
+        self.y_min = min(self.cartesian_point[self.vertex_point[i]][1] for i in self.vertex_point)
+        self.z_max = max(self.cartesian_point[self.vertex_point[i]][2] for i in self.vertex_point)
+        self.z_min = min(self.cartesian_point[self.vertex_point[i]][2] for i in self.vertex_point)
+		
+#        for p in self.cartesian_point:
+#            if self.cartesian_point[p][0] < self.x_min:
+#                self.x_min = self.cartesian_point[p][0]
+#            if self.cartesian_point[p][0] > self.x_max:
+#                self.x_max = self.cartesian_point[p][0]
+#            if self.cartesian_point[p][1] < self.y_min:
+#                self.y_min = self.cartesian_point[p][1]
+#            if self.cartesian_point[p][1] > self.y_max:
+#                self.y_max = self.cartesian_point[p][1]
+#            if len(self.cartesian_point[p]) > 2:
+#                if self.cartesian_point[p][2] < self.z_min:
+#                    self.z_min = self.cartesian_point[p][2]
+#                if self.cartesian_point[p][2] > self.z_max:
+#                    self.z_max = self.cartesian_point[p][2]
 
         print('\n  x-min:', self.x_min, '\tx-max:', self.x_max)
         print('  y-min:', self.y_min, '\ty-max:', self.y_max)
@@ -84,13 +92,17 @@ for easy access by the Part object.
         
         
     def parse_step_file(self):
+        self.round_to_decimal_place = 3
+        
         self.cartesian_point = {}
         self.direction = {}
         self.vertex_point = {}
         self.vector = {}
+        self.axis1_placement = {}
         self.axis2_placement_3D = {}
         self.line = {}
         self.circle = {}
+        self.ellipse = {}
         self.b_spline_curve = {}
         self.edge_curve = {}
         self.oriented_edge = {}
@@ -98,6 +110,7 @@ for easy access by the Part object.
         self.plane = {}
         self.cylindrical_surface = {}
         self.toroidal_surface = {}
+        self.surface_of_revolution = {}
         self.b_spline_surface = {}
         self.face_bound = {}
         self.face_outer_bound = {}
@@ -126,12 +139,16 @@ for easy access by the Part object.
                             self.vertex_point[index] = data
                         elif data_type == "VECTOR":
                             self.vector[index] = data
+                        elif data_type == "AXIS1_PLACEMENT":
+                            self.axis1_placement[index] = data 
                         elif data_type == "AXIS2_PLACEMENT_3D":
                             self.axis2_placement_3D[index] = data 
                         elif data_type == "LINE":
                             self.line[index] = data
                         elif data_type == "CIRCLE":
                             self.circle[index] = data 
+                        elif data_type == "ELLIPSE":
+                            self.ellipse[index] = data 
                         elif data_type == "B_SPLINE_CURVE_WITH_KNOTS":
                             self.b_spline_curve[index] = data
                         elif data_type == "EDGE_CURVE":
@@ -146,6 +163,8 @@ for easy access by the Part object.
                             self.cylindrical_surface[index] = data 
                         elif data_type == "TOROIDAL_SURFACE":
                             self.toroidal_surface[index] = data 
+                        elif data_type == "SURFACE_OF_REVOLUTION":
+                            self.surface_of_revolution[index] = data 
                         elif data_type == "B_SPLINE_SURFACE":
                             self.b_spline_surface[index] = data 
                         elif data_type == "FACE_BOUND":
@@ -186,7 +205,7 @@ for easy access by the Part object.
         data = match.group(3)
     
         if data_type in ["CARTESIAN_POINT", "DIRECTION"]:
-            coords = tuple(float(val) for val in re.findall(r'(-?\d+\.?\d*[eE]?[-+]?\d*)', data))
+            coords = tuple(round(float(val),self.round_to_decimal_place) for val in re.findall(r'(-?\d+\.?\d*[eE]?[-+]?\d*)', data))
             return data_type, index, coords
     
         elif data_type == "VERTEX_POINT":
@@ -196,9 +215,14 @@ for easy access by the Part object.
         elif data_type == "VECTOR":
             components = [comp.strip() for comp in data.split(',')]
             ref_point = int(re.search(r'#(\d+)', components[0]).group(1))
-            magnitude = float(components[1])
+            magnitude = round(float(components[1]),self.round_to_decimal_place)
             return data_type, index, (ref_point, magnitude)
     
+        elif data_type == "AXIS1_PLACEMENT":
+            components = [comp.strip() for comp in data.split(',')]
+            refs = tuple(int(val) for val in re.findall(r'#(\d+)', data))
+            return data_type, index, refs
+        
         elif data_type == "AXIS2_PLACEMENT_3D":
             components = [comp.strip() for comp in data.split(',')]
             refs = tuple(int(val) for val in re.findall(r'#(\d+)', data))
@@ -211,8 +235,15 @@ for easy access by the Part object.
         elif data_type == "CIRCLE":
             components = [comp.strip() for comp in data.split(',')]
             ref_point = int(re.search(r'#(\d+)', components[0]).group(1))
-            radius = float(components[1])
+            radius = round(float(components[1]),self.round_to_decimal_place)
             return data_type, index, (ref_point, radius)
+    
+        elif data_type == "ELLIPSE":
+            components = [comp.strip() for comp in data.split(',')]
+            ref_point = int(re.search(r'#(\d+)', components[0]).group(1))
+            major_radius = round(float(components[1]),self.round_to_decimal_place)
+            minor_radius = round(float(components[2]),self.round_to_decimal_place)
+            return data_type, index, (ref_point, major_radius, minor_radius)
     
         elif data_type == "B_SPLINE_CURVE_WITH_KNOTS":
             # Extract degree
@@ -301,16 +332,21 @@ for easy access by the Part object.
         elif data_type == "CYLINDRICAL_SURFACE":
             components = [comp.strip() for comp in data.split(',')]
             ref_point = int(re.search(r'#(\d+)', components[0]).group(1))
-            radius = float(components[1])
+            radius = round(float(components[1]),self.round_to_decimal_place)
             return data_type, index, (ref_point, radius)
     
         elif data_type == "TOROIDAL_SURFACE":
             components = [comp.strip() for comp in data.split(',')]
             ref_point = int(re.search(r'#(\d+)', components[0]).group(1))
-            major_radius = float(components[1])
-            minor_radius = float(components[2])
+            major_radius = round(float(components[1]),self.round_to_decimal_place)
+            minor_radius = round(float(components[2]),self.round_to_decimal_place)
             return data_type, index, (ref_point, major_radius, minor_radius)
     
+        elif data_type == "SURFACE_OF_REVOLUTION":
+            components = [comp.strip() for comp in data.split(',')]
+            refs = tuple(int(val) for val in re.findall(r'#(\d+)', data))
+            return data_type, index, refs
+        
         elif data_type == "FACE_BOUND":
             # Remove all newline characters
             cleaned_data = data.replace('\n', '').replace('\r', '')
@@ -1344,5 +1380,5 @@ is accessible to the FEModel object.
 
 
 if __name__ == '__main__':
-    stpf = StepFileData('Part3_SW.step')
+    stpf = StepFileData('test_part6_AP214.step')
         
