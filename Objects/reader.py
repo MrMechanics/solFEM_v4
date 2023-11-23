@@ -45,49 +45,6 @@ for easy access by the Part object.
         print('\nReading step file... ', end='')
         self.parse_step_file()
         print('Finished!')
-        print('\n\t New Part: '+self.name)
-        print('/----- ---------- ------  --------- ------\\')
-        if len(self.advanced_brep_shape_representation) == 1:
-            print('  Solid model')
-        elif len(self.manifold_surface_shape_representation) == 1:
-            print('  Shell model')
-#        elif 2D planar model?
-        else:
-            print('Unknown model type')
-        print('\n  Number of faces: ', len(self.advanced_face))
-        print('  Number of vertices: ', len(self.vertex_point))
-#        self.x_min = self.x_max = self.y_min = self.y_max = self.z_min = self.z_max = 0.
-		
-        self.x_max = max(self.cartesian_point[self.vertex_point[i]][0] for i in self.vertex_point)
-        self.x_min = min(self.cartesian_point[self.vertex_point[i]][0] for i in self.vertex_point)
-        self.y_max = max(self.cartesian_point[self.vertex_point[i]][1] for i in self.vertex_point)
-        self.y_min = min(self.cartesian_point[self.vertex_point[i]][1] for i in self.vertex_point)
-        self.z_max = max(self.cartesian_point[self.vertex_point[i]][2] for i in self.vertex_point)
-        self.z_min = min(self.cartesian_point[self.vertex_point[i]][2] for i in self.vertex_point)
-		
-#        for p in self.cartesian_point:
-#            if self.cartesian_point[p][0] < self.x_min:
-#                self.x_min = self.cartesian_point[p][0]
-#            if self.cartesian_point[p][0] > self.x_max:
-#                self.x_max = self.cartesian_point[p][0]
-#            if self.cartesian_point[p][1] < self.y_min:
-#                self.y_min = self.cartesian_point[p][1]
-#            if self.cartesian_point[p][1] > self.y_max:
-#                self.y_max = self.cartesian_point[p][1]
-#            if len(self.cartesian_point[p]) > 2:
-#                if self.cartesian_point[p][2] < self.z_min:
-#                    self.z_min = self.cartesian_point[p][2]
-#                if self.cartesian_point[p][2] > self.z_max:
-#                    self.z_max = self.cartesian_point[p][2]
-
-        print('\n  x-min:', self.x_min, '\tx-max:', self.x_max)
-        print('  y-min:', self.y_min, '\ty-max:', self.y_max)
-        print('  z-min:', self.z_min, '\tz-max:', self.z_max)
-        self.center_of_mass = (0., 0., 0.)
-        print('\n  Center of mass:', self.center_of_mass)
-        self.volume = 0.
-        print('  Volume:', self.volume)
-        print('\\----- ---------- ------  --------- ------/')
 
         
         

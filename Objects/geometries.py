@@ -419,7 +419,87 @@ class Ellipse(Line):
         pnts = 36
         pnt1 = points[0]
         pnt2 = points[1]
-    
+        if pnt1 == pnt2:
+            for v in range(pnts):
+                d = pnts/(v+1)
+                vc = np.cos(2*np.pi/d)
+                vs = np.sin(2*np.pi/d)
+                self.points.append(Point3D(orig[0]+vs*yvec[0]*rad1+vc*xvec[0]*rad2,
+                                           orig[1]+vs*yvec[1]*rad1+vc*xvec[1]*rad2,
+                                           orig[2]+vs*yvec[2]*rad1+vc*xvec[2]*rad2))
+            self.points.append(self.points[0])
+            self.angle1 = 0
+            self.angle2 = 2*np.pi
+            self.d_angle = 2*np.pi
+        else:
+            # calculate angles
+            pnt0 = (orig[0]+xvec[0]*rad1, orig[1]+xvec[1]*rad1, orig[2]+xvec[2]*rad1)
+            v0 = [pnt0[0]-orig[0],pnt0[1]-orig[1],pnt0[2]-orig[2]]
+            v0 = v0 / np.linalg.norm(v0)
+            v1 = [pnt1[0]-orig[0],pnt1[1]-orig[1],pnt1[2]-orig[2]]
+            v1 = v1 / np.linalg.norm(v1)
+            v2 = [pnt2[0]-orig[0],pnt2[1]-orig[1],pnt2[2]-orig[2]]
+            v2 = v2 / np.linalg.norm(v2)
+            dot_product1 = np.dot(v0,v1)
+            dot_product1 = np.clip(dot_product1,-1,1)
+            ang1 = np.arccos(dot_product1)
+            dot_product2 = np.dot(v0,v2)
+            dot_product2 = np.clip(dot_product2,-1,1)
+            ang2 = np.arccos(dot_product2)
+
+            # check if angles are larger than 180 degrees
+            # THIS PART OF THE CODE IS SENSITIVE TO HOW MANY
+            # DECIMALS ARE BEING USED IN THE INPUT
+            # MEANING IT ASSUMES FOR EXAMPLE 0. == 1.e-13
+            # SO THE INPUT IS ROUNDED UP BEFOREHAND
+            v0_test = np.cross(v0,yvec)/np.linalg.norm(np.cross(v0,yvec))
+            if not np.all(np.cross(v0,v1) == 0.):
+                v1_test = np.cross(v0,v1)/np.linalg.norm(np.cross(v0,v1))
+            else:
+                v1_test = v0_test
+            if not np.all(np.cross(v0,v2) == 0.):
+                v2_test = np.cross(v0,v2)/np.linalg.norm(np.cross(v0,v2))
+            else:
+                v2_test = v0_test
+
+            check1 = (v0_test == v1_test)
+            if not np.all(check1 == True):
+                ang1 = 2*np.pi-ang1
+                
+            check2 = (v0_test == v2_test)
+            if not np.all(check2 == True):
+                ang2 = 2*np.pi-ang2
+                    
+            d_ang = ang2-ang1
+            if ang1 > ang2:
+                d_ang = (2*np.pi-ang1)+ang2
+            self.angle1 = ang1
+            self.angle2 = ang2
+            self.d_angle = d_ang
+            pnts = abs(math.floor((18/(np.pi))*d_ang))
+            if pnts == 0:
+                pnts = 2
+            vc = np.cos(ang1)
+            vs = np.sin(ang1)
+            self.points.append(Point3D(orig[0]+vs*yvec[0]*rad1+vc*xvec[0]*rad2,
+                                       orig[1]+vs*yvec[1]*rad1+vc*xvec[1]*rad2,
+                                       orig[2]+vs*yvec[2]*rad1+vc*xvec[2]*rad2))
+            for v in range(pnts):
+                d = pnts/(v+1)
+                vc = np.cos(ang1 + (d_ang)/d)
+                vs = np.sin(ang1 + (d_ang)/d)
+                if v == pnts-1:
+                    vc = np.cos(ang2)
+                    vs = np.sin(ang2)
+                self.points.append(Point3D(orig[0]+vs*yvec[0]*rad1+vc*xvec[0]*rad2,
+                                           orig[1]+vs*yvec[1]*rad1+vc*xvec[1]*rad2,
+                                           orig[2]+vs*yvec[2]*rad1+vc*xvec[2]*rad2))    
+        self.length = 0.
+        for p in range(len(self.points)-1):
+            self.length += np.sqrt((self.points[p+1].x()-self.points[p].x())**2 + \
+                                   (self.points[p+1].y()-self.points[p].y())**2 + \
+                                   (self.points[p+1].z()-self.points[p].z())**2)
+                
     
     
 
@@ -427,8 +507,46 @@ class Ellipse(Line):
 class Spline(Line):
     def __init__(self,number):
         super(Spline,self).__init__(number)
-        self.type   = 'Spline'
-
+        self.type   = 'spline'
+        self.points = []
+    def newPoints(self,geom,cn):
+        # Compute the actual knots from the multiplicities
+        knot_values = geom.b_spline_curve[cn]['knot_values']
+        print('knot_values:', knot_values)
+        knot_multiplicities = geom.b_spline_curve[cn]['knot_multiplicities']
+        print('knot_multiplicities:', knot_multiplicities)
+        control_points = geom.b_spline_curve[cn]['control_points']
+        control_points = [geom.cartesian_point[x] for x in control_points]
+        print('control_points:', control_points)
+        degree = geom.b_spline_curve[cn]['degree']
+        print('degree:', degree)
+        actual_knots = []
+        for k, m in zip(knot_values, knot_multiplicities):
+            actual_knots.extend([k] * m)
+        # Evaluate curve at various points within knot range
+        num_samples = 10
+        us = [actual_knots[0] + i*(actual_knots[-1] - actual_knots[0])/(num_samples-1) for i in range(num_samples)]
+        points = [self.evaluate_bspline(u, control_points, degree, actual_knots) for u in us]
+        for p in points:
+            self.points.append(Point3D(p[0],p[1],p[2]))
+        self.points[-1] = Point3D(control_points[-1][0],control_points[-1][1],control_points[-1][2])
+    def cox_de_boor(self, u, k, d, knots):
+        # Cox-de Boor recursion formula
+        if d == 0:
+            return 1.0 if knots[k] <= u < knots[k+1] else 0.0
+        else:
+            term1 = (u - knots[k]) / (knots[k+d] - knots[k]) * self.cox_de_boor(u, k, d-1, knots) if knots[k+d] != knots[k] else 0
+            term2 = (knots[k+d+1] - u) / (knots[k+d+1] - knots[k+1]) * self.cox_de_boor(u, k+1, d-1, knots) if knots[k+d+1] != knots[k+1] else 0
+            return term1 + term2
+    def evaluate_bspline(self, u, control_points, degree, knots):
+        # Evaluate B-spline curve at parameter u
+        n = len(control_points)
+        point = [0, 0, 0]  # Assuming 3D control points
+        for i in range(n):
+            point[0] += control_points[i][0] * self.cox_de_boor(u, i, degree, knots)
+            point[1] += control_points[i][1] * self.cox_de_boor(u, i, degree, knots)
+            point[2] += control_points[i][2] * self.cox_de_boor(u, i, degree, knots)
+        return point
 
 
 

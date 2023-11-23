@@ -141,22 +141,52 @@ user to interact with.
                             z_vec = geom.direction[geom.axis2_placement_3D[geom.ellipse[geom.edge_curve[l][2]][0]][1]]
                             x_vec = geom.direction[geom.axis2_placement_3D[geom.ellipse[geom.edge_curve[l][2]][0]][2]]
                             y_vec = np.cross(z_vec,x_vec)
-                            self.lines[l].setRadius(r1,r2)
+                            self.lines[l].setRadiuses(r2,r1)
                             self.lines[l].setCenter(c)
                             self.lines[l].setAxis(x_vec,y_vec)
                             self.lines[l].newPoints([p1,p2])
                         elif geom.edge_curve[l][2] in geom.b_spline_curve:
                             self.lines[l] = Spline(l)
+                            self.lines[l].newPoints(geom,geom.edge_curve[l][2])
+                            print('b_spline', l)
+                            print(geom.b_spline_curve[geom.edge_curve[l][2]])
+                            print('points:', self.lines[l].points)
                         else:
                             print('\nUNKNOWN line type for line number:', l)
 
                     self.edges[e].lines[l] = self.lines[l]
 
-        print('len(self.lines):', len(self.lines))
+        print('\n\t New Part: '+self.name)
+        print('/----- ---------- ------  --------- ------\\')
+        if len(geom.advanced_brep_shape_representation) == 1:
+            print('  Solid model')
+        elif len(geom.manifold_surface_shape_representation) == 1:
+            print('  Shell model')
+#        elif 2D planar model?
+        else:
+            print('Unknown model type')
+        print('\n  Number of faces: ', len(geom.advanced_face))
+        print('  Number of vertices: ', len(geom.vertex_point))
+		
+        self.x_max = max(self.lines[l].points[j].x() for l in self.lines for j in range(len(self.lines[l].points)))
+        self.x_min = min(self.lines[l].points[j].x() for l in self.lines for j in range(len(self.lines[l].points)))
+        self.y_max = max(self.lines[l].points[j].y() for l in self.lines for j in range(len(self.lines[l].points)))
+        self.y_min = min(self.lines[l].points[j].y() for l in self.lines for j in range(len(self.lines[l].points)))
+        self.z_max = max(self.lines[l].points[j].z() for l in self.lines for j in range(len(self.lines[l].points)))
+        self.z_min = min(self.lines[l].points[j].z() for l in self.lines for j in range(len(self.lines[l].points)))
+		
+        print('\n  x-min:', self.x_min, '\tx-max:', self.x_max)
+        print('  y-min:', self.y_min, '\ty-max:', self.y_max)
+        print('  z-min:', self.z_min, '\tz-max:', self.z_max)
+        self.center_of_mass = (0., 0., 0.)
+        print('\n  Center of mass:', self.center_of_mass)
+        self.volume = 0.
+        print('  Volume:', self.volume)
+        print('\\----- ---------- ------  --------- ------/')
 
-        self.view_radius = max((geom.x_max - geom.x_min, geom.y_max - geom.y_min, geom.z_max-geom.z_min))*0.5
-        self.view_scope = {'max': [geom.x_max, geom.y_max, geom.z_max],
-                           'min': [geom.x_min, geom.y_min, geom.z_min]}
+        self.view_radius = max((self.x_max - self.x_min, self.y_max - self.y_min, self.z_max-self.z_min))*0.5
+        self.view_scope = {'max': [self.x_max, self.y_max, self.z_max],
+                           'min': [self.x_min, self.y_min, self.z_min]}
         self.generateDisplayLists('geometry')
 
 
@@ -196,6 +226,18 @@ user to interact with.
                     glVertex3f(self.lines[l].points[1].x(),self.lines[l].points[1].y(),self.lines[l].points[1].z())
                     glEnd()
                 elif self.lines[l].type == 'arc':
+                    for p in range(len(self.lines[l].points)-1):
+                        glBegin(GL_LINES)
+                        glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
+                        glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                        glEnd()
+                elif self.lines[l].type == 'ellipse':
+                    for p in range(len(self.lines[l].points)-1):
+                        glBegin(GL_LINES)
+                        glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
+                        glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                        glEnd()
+                elif self.lines[l].type == 'spline':
                     for p in range(len(self.lines[l].points)-1):
                         glBegin(GL_LINES)
                         glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
