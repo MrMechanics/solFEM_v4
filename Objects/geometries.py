@@ -12,8 +12,10 @@
 #
 
 
+from copy import deepcopy
 import math
 import numpy as np
+
 
 
 
@@ -243,9 +245,9 @@ and multiply with other quaternions.
         theta = rAng/2.
 
         self.r = math.cos(theta)
-        self.i = rAx[0]*math.sin(theta)
-        self.j = rAx[1]*math.sin(theta)
-        self.k = rAx[2]*math.sin(theta)
+        self.i = rAx.x()*math.sin(theta)
+        self.j = rAx.y()*math.sin(theta)
+        self.k = rAx.z()*math.sin(theta)
     def quatToAxisAngle(self):
         '''
     Gives the Axis and Angle of rotation quaternion.
@@ -253,16 +255,16 @@ and multiply with other quaternions.
         rAx = [self.i, self.j, self.k]
         rAng = math.arccos(self.r)*2
         return rAx, rAng
-    def rotatePointAboutAxis(point,axis0,axis1,angle):
+    def rotatePointAboutAxis(self,point,axis_p0,axis_p1,angle):
         '''
-    First moves point, axis0 and axis1 together so that 
+    First moves point, axis_p0 and axis_p1 together so that 
     axis0 is at the origin. Then creates the two quaternions 
     and rotates the point about the arbitrary axis defined
-    by axis0 and axis1. Finally moves the point back so that 
-    axis0 is at its original position again. 
+    by axis_p0 and axis_p1. Finally moves the point back so that 
+    axis_p0 is at its original position again. 
     '''
-        axis1_0 = axis1 - axis0
-        point_0 = point - axis0
+        axis1_0 = axis_p1 - axis_p0
+        point_0 = point - axis_p0
     
         qPnt0 = Quaternion()
         qPnt0.vectorToQuat(point_0)
@@ -271,7 +273,8 @@ and multiply with other quaternions.
         qRot.axisAngleToQuat(axis1_0.normalized(),angle)
         qPnt1 = qRot.multi(qPnt0.multi(qRot.conj()))
 
-        return [qPnt1.i+axis0.x(), qPnt1.j+axis0.y(), qPnt1.k+axis0.z()]
+        return [qPnt1.i+axis_p0.x(), qPnt1.j+axis_p0.y(), qPnt1.k+axis_p0.z()]
+
 
 
 
@@ -281,6 +284,7 @@ class Line(object):
         self.number = number
         self.type   = 'line'
         self.points = []
+        self.seeds  = []
         self.length = 0.
     def newPoints(self,points):
         for p in points:
@@ -389,6 +393,7 @@ class Arc(Line):
                 self.points.append(Point3D(orig[0]+vs*yvec[0]*radi+vc*xvec[0]*radi,
                                            orig[1]+vs*yvec[1]*radi+vc*xvec[1]*radi,
                                            orig[2]+vs*yvec[2]*radi+vc*xvec[2]*radi))
+
 
 
 
@@ -502,6 +507,7 @@ class Ellipse(Line):
                 
     
     
+    
 
 
 class Spline(Line):
@@ -511,25 +517,29 @@ class Spline(Line):
         self.points = []
     def newPoints(self,geom,cn):
         # Compute the actual knots from the multiplicities
-        knot_values = geom.b_spline_curve[cn]['knot_values']
-        print('knot_values:', knot_values)
+        knot_values = [geom.b_spline_curve[cn]['knot_values'][x] for x in range(len(geom.b_spline_curve[cn]['knot_values']))]
+        # double check first knot value
+        if knot_values[0] > 1.:
+            knot_values[0] = 0.
         knot_multiplicities = geom.b_spline_curve[cn]['knot_multiplicities']
-        print('knot_multiplicities:', knot_multiplicities)
         control_points = geom.b_spline_curve[cn]['control_points']
         control_points = [geom.cartesian_point[x] for x in control_points]
-        print('control_points:', control_points)
         degree = geom.b_spline_curve[cn]['degree']
-        print('degree:', degree)
         actual_knots = []
         for k, m in zip(knot_values, knot_multiplicities):
             actual_knots.extend([k] * m)
         # Evaluate curve at various points within knot range
-        num_samples = 10
+        num_samples = 16
         us = [actual_knots[0] + i*(actual_knots[-1] - actual_knots[0])/(num_samples-1) for i in range(num_samples)]
         points = [self.evaluate_bspline(u, control_points, degree, actual_knots) for u in us]
         for p in points:
             self.points.append(Point3D(p[0],p[1],p[2]))
         self.points[-1] = Point3D(control_points[-1][0],control_points[-1][1],control_points[-1][2])
+        self.length = 0.
+        for p in range(len(self.points)-1):
+            self.length += np.sqrt((self.points[p+1].x()-self.points[p].x())**2 + \
+                                   (self.points[p+1].y()-self.points[p].y())**2 + \
+                                   (self.points[p+1].z()-self.points[p].z())**2)
     def cox_de_boor(self, u, k, d, knots):
         # Cox-de Boor recursion formula
         if d == 0:
@@ -551,13 +561,101 @@ class Spline(Line):
 
 
 
+
 class Edge(object):
     def __init__(self,number):
         self.number = number
         self.lines  = {}
-        self.points = {}
+        self.points = []
+    def getEdgePoints(self):
+        # first rearrange line directions to make sure
+        # they all form a continous loop around the edge
+        keys = list(self.lines.keys())
+        if len(self.lines) != 1:
+            for check in range(3):
+                if np.linalg.norm(self.lines[keys[0]].points[0].x() - self.lines[keys[-1]].points[-1].x()) < 0.1 and \
+                   np.linalg.norm(self.lines[keys[0]].points[0].y() - self.lines[keys[-1]].points[-1].y()) < 0.1 and \
+                   np.linalg.norm(self.lines[keys[0]].points[0].z() - self.lines[keys[-1]].points[-1].z()) < 0.1:
+                    break
+                else:
+                    if check == 0:
+                        self.lines[keys[-1]].points = self.lines[keys[-1]].points[::-1]
+                    elif check == 1:
+                        self.lines[keys[0]].points = self.lines[keys[0]].points[::-1]
+                    elif check == 2:
+                        self.lines[keys[-1]].points = self.lines[keys[-1]].points[::-1]
+            for l in range(len(self.lines)):
+                if not np.linalg.norm(self.lines[keys[l-1]].points[-1] - self.lines[keys[l]].points[0]) < 0.1:
+                    self.lines[keys[l]].points = self.lines[keys[l]].points[::-1]
+        # insert more points if few to 
+        # facilitate face mesh rendering 
+        shortest_length = None
+        for l in self.lines:
+            if shortest_length == None:
+                shortest_length = self.lines[l].length
+            else:
+                if shortest_length > self.lines[l].length:
+                    shortest_length = self.lines[l].length
+        shortest_length = shortest_length*0.25
+            
+        for l in self.lines:
+            points = deepcopy(self.lines[l].points)
+            if self.lines[l].type == 'line':
+                inserts = int(self.lines[l].length/shortest_length)-1
+                new_points = []
+                new_points.append(points[0].coordinates)
+                for i in range(inserts-1):
+                    new_points.append([points[0].x()+(i+1)*(points[1].x()-points[0].x())/inserts,
+                                       points[0].y()+(i+1)*(points[1].y()-points[0].y())/inserts,
+                                       points[0].z()+(i+1)*(points[1].z()-points[0].z())/inserts])
+                points = new_points
+            elif self.lines[l].type == 'arc':
+                inserts = int(self.lines[l].length/shortest_length)-1
+                if inserts > len(self.lines[l].points) and inserts < 20:
+                    new_points = []
+                    radi = self.lines[l].radius
+                    orig = (self.lines[l].center.x(),self.lines[l].center.y(),self.lines[l].center.z())
+                    xvec = (self.lines[l].axis.x_vec.x(),self.lines[l].axis.x_vec.y(),self.lines[l].axis.x_vec.z())
+                    yvec = (self.lines[l].axis.y_vec.x(),self.lines[l].axis.y_vec.y(),self.lines[l].axis.y_vec.z())
+                    ang1 = self.lines[l].angle1
+                    ang2 = self.lines[l].angle2
+                    d_ang = self.lines[l].d_angle
+                    for v in range(inserts-1):
+                        d = inserts/(v+1)
+                        vc = np.cos(ang1 + (d_ang)/d)
+                        vs = np.sin(ang1 + (d_ang)/d)
+                        if v == inserts-1:
+                            vc = np.cos(ang2)
+                            vs = np.sin(ang2)
+                        if v != 0:
+                            new_points.append([orig[0]+vs*yvec[0]*radi+vc*xvec[0]*radi,
+                                               orig[1]+vs*yvec[1]*radi+vc*xvec[1]*radi,
+                                               orig[2]+vs*yvec[2]*radi+vc*xvec[2]*radi])
+                    # check if needs to be reversed
+                    if np.linalg.norm(np.array(points[0].coordinates)-new_points[0]) > \
+                       np.linalg.norm(np.array(points[0].coordinates)-new_points[-1]):
+                        new_points.append(points[0].coordinates)
+                        new_points = new_points[::-1]
+                    else:
+                        new_points = new_points[::-1]
+                        new_points.append(points[0].coordinates)
+                        new_points = new_points[::-1]
+                    self.lines[l].points = []
+                    for p in range(len(new_points)):
+                        self.lines[l].points.append(Point3D(new_points[p][0],new_points[p][1],new_points[p][2]))
+                    self.lines[l].points.append(points[-1])
+                else:
+                    new_points = [self.lines[l].points[x].coordinates for x in range(len(self.lines[l].points)-1)]
+            else:
+                new_points = [self.lines[l].points[x].coordinates for x in range(len(self.lines[l].points)-1)]
+            # add the line points to the edge points
+            for p in new_points:
+                self.points.append(p)
+        # convert to numpy array
+        self.points = np.array(self.points)
+        self.centroid_np = np.mean(self.points,axis=0)
+        self.centroid = Point3D(self.centroid_np[0], self.centroid_np[1], self.centroid_np[2])
 
-    
 
 
 
@@ -565,12 +663,42 @@ class Face(object):
     def __init__(self,number,face_type):
         self.number = number
         self.edges  = {}
-        self.points = {}
+        self.points = []
         self.type   = face_type
-    def normal(self):
-        pass
-
-    
+        self.g_mesh = {}                # for geometry rendering
+        self.mesh   = {'nodes':     {}, # for finite element
+                       'elements':  {}}
+    def getFacePoints(self):
+        for e in self.edges:
+            for p in range(len(self.edges[e].points)):
+                self.points.append(self.edges[e].points[p].tolist())
+        self.points = np.array(self.points)
+        self.centroid_np = np.mean(self.points,axis=0)
+        self.centroid = Point3D(self.centroid_np[0],self.centroid_np[1], self.centroid_np[2])
+    def surfaceNormal(self,geom):
+        if self.type == 'plane':
+            p1 = geom.cartesian_point[geom.axis2_placement_3D[geom.plane[geom.advanced_face[self.number][-2]]][0]]
+            v1 = geom.direction[geom.axis2_placement_3D[geom.plane[geom.advanced_face[self.number][-2]]][1]]
+            # check if reversed normal to plane
+            if not geom.advanced_face[self.number][-1]:
+                self.normal = [Point3D(p1[0], p1[1], p1[2]), Point3D(p1[0]-v1[0], p1[1]-v1[1], p1[2]-v1[2])]
+                self.normal_v = self.normal[1] - self.normal[0]
+            else:
+                self.normal = [Point3D(p1[0], p1[1], p1[2]), Point3D(p1[0]+v1[0], p1[1]+v1[1], p1[2]+v1[2])]
+                self.normal_v = self.normal[1] - self.normal[0]
+            self.normal_v = self.normal_v.normalized()
+        if self.type == 'cylindrical':
+            p1 = geom.cartesian_point[geom.axis2_placement_3D[geom.cylindrical_surface[geom.advanced_face[self.number][-2]][0]][0]]
+            v1 = geom.direction[geom.axis2_placement_3D[geom.cylindrical_surface[geom.advanced_face[self.number][-2]][0]][1]]
+            self.radius = geom.cylindrical_surface[geom.advanced_face[self.number][-2]][1]
+            # check if inwards or outwards
+            self.normal = [Point3D(p1[0], p1[1], p1[2]), Point3D(p1[0]+v1[0], p1[1]+v1[1], p1[2]+v1[2])]
+            self.normal_v = self.normal[1] - self.normal[0]
+            self.normal_v = self.normal_v.normalized()
+            self.inwards = True
+            if not geom.advanced_face[self.number][-1]:
+                self.inwards = False
+        
 
 
 

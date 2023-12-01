@@ -63,6 +63,7 @@ user to interact with.
         self.view_radius = 2.
         self.colors = {'part_lines':         (0.05, 0.10, 0.05, 1.0),
                        'part_faces':         (0.32, 0.43, 0.49, 1.0),
+                       'part_faces_inside':  (0.62, 0.63, 0.19, 1.0),
                        'element_lines_pre':  (0.50, 0.50, 0.50, 1.0),
                        'element_lines_post': (0.50, 0.50, 0.50, 1.0),
                        'element_faces_pre':  (0.50, 0.50, 0.50, 1.0),
@@ -91,6 +92,10 @@ user to interact with.
                 face_type = 'cylindrical'
             elif geom.advanced_face[f][-2] in geom.toroidal_surface:
                 face_type = 'toroidal'
+            elif geom.advanced_face[f][-2] in geom.surface_of_revolution:
+                face_type = 'revolution'
+            elif geom.advanced_face[f][-2] in geom.surface_of_linear_extrusion:
+                face_type = 'extrusion'
             elif geom.advanced_face[f][-2] in geom.b_spline_surface:
                 face_type = 'b_spline'
             else:
@@ -148,13 +153,35 @@ user to interact with.
                         elif geom.edge_curve[l][2] in geom.b_spline_curve:
                             self.lines[l] = Spline(l)
                             self.lines[l].newPoints(geom,geom.edge_curve[l][2])
-                            print('b_spline', l)
-                            print(geom.b_spline_curve[geom.edge_curve[l][2]])
-                            print('points:', self.lines[l].points)
                         else:
                             print('\nUNKNOWN line type for line number:', l)
 
                     self.edges[e].lines[l] = self.lines[l]
+                # get edge points
+                self.edges[e].getEdgePoints()
+
+            # generate surface mesh for rendering
+            self.faces[f].surfaceNormal(geom)
+            self.faces[f].getFacePoints()
+            self.mesher.meshFace(self.faces[f])
+
+
+#        print('number of faces:', len(self.faces))
+#        print(self.faces.keys())
+#        for f in self.faces:
+#            print('\n\nface:', f)
+#            print('face type:', self.faces[f].type)
+#            print('face points:', self.faces[f].points)
+#            print('face centroid:', self.faces[f].centroid)
+#            if self.faces[f].type == 'plane':
+#                print('face_normal:', self.faces[f].normal_v)
+#            print('face_edges:', self.faces[f].edges.keys(), end='')
+#            for e in self.faces[f].edges:
+#                print('edge_points:\n', self.faces[f].edges[e].points)
+#                print('centroid:', self.faces[f].edges[e].centroid)
+#                print('\nedge', e, 'lines:')
+#                for l in self.faces[f].edges[e].lines:
+#                    print(l, end=', ')
 
         print('\n\t New Part: '+self.name)
         print('/----- ---------- ------  --------- ------\\')
@@ -178,10 +205,10 @@ user to interact with.
         print('\n  x-min:', self.x_min, '\tx-max:', self.x_max)
         print('  y-min:', self.y_min, '\ty-max:', self.y_max)
         print('  z-min:', self.z_min, '\tz-max:', self.z_max)
-        self.center_of_mass = (0., 0., 0.)
-        print('\n  Center of mass:', self.center_of_mass)
-        self.volume = 0.
-        print('  Volume:', self.volume)
+#        self.center_of_mass = (0., 0., 0.)
+#        print('\n  Center of mass:', self.center_of_mass)
+#        self.volume = 0.
+#        print('  Volume:', self.volume)
         print('\\----- ---------- ------  --------- ------/')
 
         self.view_radius = max((self.x_max - self.x_min, self.y_max - self.y_min, self.z_max-self.z_min))*0.5
@@ -211,9 +238,85 @@ user to interact with.
     '''
         if displ_type == 'geometry':
             self.displayLists['lines'] = glGenLists(1)
-#            self.displayLists['faces'] = glGenLists(1)
-#            self.displayLists['seeds'] = glGenLists(1)
+            self.displayLists['faces'] = glGenLists(1)
+            self.displayLists['seeds'] = glGenLists(1)
 
+
+
+            # -----------
+            # DRAW FACES
+            # -------------------
+            glNewList(self.displayLists['faces'], GL_COMPILE)
+
+            for f in self.faces:
+                if self.faces[f].type in ['cylindrical']:
+                    for e in self.faces[f].g_mesh['elements']:
+                        glColor3f(self.colors['part_faces'][0], 
+                                  self.colors['part_faces'][1],
+                                  self.colors['part_faces'][2])
+                        if self.faces[f].normal_v == Vector3D(0,0,-1):
+                            glBegin(GL_TRIANGLES)
+                            elm = self.faces[f].g_mesh['elements'][e]
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
+                            glEnd()
+                            glColor3f(self.colors['part_faces_inside'][0], 
+                                      self.colors['part_faces_inside'][1],
+                                      self.colors['part_faces_inside'][2])
+                            glBegin(GL_TRIANGLES)
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
+                            glEnd()
+                        else:
+                            glBegin(GL_TRIANGLES)
+                            elm = self.faces[f].g_mesh['elements'][e]
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
+                            glEnd()
+                            glColor3f(self.colors['part_faces_inside'][0], 
+                                      self.colors['part_faces_inside'][1],
+                                      self.colors['part_faces_inside'][2])
+                            glBegin(GL_TRIANGLES)
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
+                            glEnd()
+                else:
+                    pass
+            glEndList()
+
+
+
+            # -----------
+            # DRAW LINES
+            # -------------------
             glNewList(self.displayLists['lines'], GL_COMPILE)
             glLineWidth(3.0)
             glColor3f(self.colors['part_lines'][0], 
@@ -246,10 +349,43 @@ user to interact with.
                 else:
                     pass
 
+            # draw surface normals for debugging
+            for f in self.faces:
+                if self.faces[f].type == 'plane':
+                    glColor3f(0.9,0,0)
+                    glBegin(GL_LINES)
+                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
+                    glEnd()
+                if self.faces[f].type == 'cylindrical':
+                    glColor3f(0.9,0,0)
+                    if self.faces[f].inwards == True:
+                        glColor3f(0,0.9,0)
+                    glBegin(GL_LINES)
+                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
+                    glEnd()
+                    
             glEndList()
 
+
             
-            
+            # -----------
+            # DRAW SEEDS
+            # -------------------
+            glNewList(self.displayLists['seeds'], GL_COMPILE)
+
+            glPointSize(8.0)
+            glColor3f(0.4, 0.65, 0.4)
+            glBegin(GL_POINTS)
+            for e in self.edges:
+                for p in self.edges[e].points:
+                    glVertex3f(p[0],p[1],p[2])
+            glEnd()
+
+            glEndList()
+
+
         elif displ_type == 'mesh':
             pass
         else:
