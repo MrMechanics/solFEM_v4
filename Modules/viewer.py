@@ -61,10 +61,10 @@ animations, loads, etc.
         self.viewLoads = False
         self.viewSolutions = False
         self.viewResults = False
-        self.viewOrigin = True
+        self.viewOrigin = False
         self.viewNodes = False
-        self.viewShaded = False
-        self.viewWireframe = True
+        self.viewShaded = True
+        self.viewWireframe = False
         self.viewAveraged = False
         self.viewMeshTree = True
         self.viewAnimate = True
@@ -85,13 +85,18 @@ animations, loads, etc.
         self.selectionRectangleEnd = [0,0]
 
         self.colors = {'background_pre':     (0.330, 0.430, 0.330, 1.0),
-                       'background_post':    (0.336, 0.447, 0.588, 1.0)}
-        self.currentDisplayList = { 'part':            'None',
-                                    'solution':     'None',
-                                    'result':         'None',
-                                    'subresult':    'None',
-                                    'info':            'None',
-                                    'avg_info':        'None',
+                       'background_post':    (0.336, 0.447, 0.588, 1.0),
+                       'elements':           (0.336, 0.447, 0.588, 1.0),
+                       'loads':              (0.336, 0.447, 0.588, 1.0),
+                       'boundaries':         (0.336, 0.447, 0.588, 1.0),
+                       'boundaries_rot':     (0.336, 0.447, 0.588, 1.0),
+                       'constraints':        (0.336, 0.447, 0.588, 1.0)}
+        self.currentDisplayList = { 'part':          'None',
+                                    'solution':      'None',
+                                    'result':        'None',
+                                    'subresult':     'None',
+                                    'info':          'None',
+                                    'avg_info':      'None',
                                     'max_val':         None,
                                     'min_val':         None,
                                     'avg_max_val':     None,
@@ -100,10 +105,10 @@ animations, loads, etc.
                                     'view_scope':   {'max': [ 1., 1., 1.],
                                                      'min': [-1.,-1.,-1.] },
                                     'displayLists': {'orientation':  None,
-                                                     'nodes':         None,
-                                                     'wireframe':     None,
-                                                     'shaded':         None,
-                                                     'average':         None }}
+                                                     'nodes':        None,
+                                                     'wireframe':    None,
+                                                     'shaded':       None,
+                                                     'average':      None }}
 
         self.camera = Camera()
         self.camera.setSceneRadius( self.currentDisplayList['view_radius'] )
@@ -111,7 +116,7 @@ animations, loads, etc.
         self.modelCentered = False
 
         self.coordSys0 = CoordSys3D(Point3D(0.,0.,0.),Vector3D(1.,0.,0.),Vector3D(0.,1.,0.))
-        self.coordSys0_centered = CoordSys3D(Point3D(0.,0.,0.),Vector3D(1.,0.,0.),Vector3D(0.,1.,0.))
+        self.coordSys0_centered = self.coordSys0
 
 
 
@@ -172,6 +177,72 @@ animations, loads, etc.
             glEnd()
 
 
+
+        # Render all of the 3D model
+        # --------------------------
+        cDL = self.currentDisplayList
+
+        if self.viewAssembly:
+            pass
+        
+        if self.viewGeometry:
+            pass
+
+        if self.viewMesh:
+            pass
+        
+        if self.viewBoundaries:
+            pass
+        
+        if self.viewConstraints:
+            pass
+        
+        if self.viewLoads:
+            pass
+        
+        if self.viewSolutions:
+            pass
+        
+        if self.viewResults:
+            pass
+        
+        if self.viewNodes:
+            if cDL['displayLists']['nodes'] != None:
+                glCallList(cDL['displayLists']['nodes'])
+
+        if self.viewWireframe:
+            if cDL['displayLists']['wireframe'] != None:
+                glCallList(cDL['displayLists']['wireframe'])
+        else:
+            if cDL['displayLists']['wireframe'] != None:
+                glCallList(cDL['displayLists']['wireframe'])
+            if self.viewAveraged:
+                if cDL['displayLists']['average'] != None:
+                    glCallList(cDL['displayLists']['average'])
+            else:
+                if cDL['displayLists']['shaded'] != None:
+                    glCallList(cDL['displayLists']['shaded'])
+
+
+
+        # Render what is selected
+        # --------------------------
+        if self.model.nodesSelected:
+            pass
+        elif self.model.elementsSelected:
+            pass
+
+        elif self.model.linesSelected:
+            if self.model.displayLists['selected_lines'] != None:
+                glCallList(self.model.displayLists['selected_lines'])
+            else:
+                self.model.selected_lines.clear()
+                self.model.linesSelected = False
+        
+        elif self.model.facesSelected:
+            pass
+        else:
+            pass
 
 
 
@@ -245,79 +316,10 @@ animations, loads, etc.
         glVertex( self.camera.target.x() - view_length*0.02, self.camera.target.y() + view_length*0.02, self.camera.target.z() - view_length*0.235)
         glEnd()
 
-        glViewport(0, 0, self.width, self.height)        
-
-
-
-        # Render all of the 3D model
-        # --------------------------
-        cDL = self.currentDisplayList
-
-        if self.viewAssembly:
-            pass
+        glViewport(0, 0, self.width, self.height)
         
-        if self.viewGeometry:
-            pass
-
-        if self.viewMesh:
-            pass
         
-        if self.viewBoundaries:
-            pass
         
-        if self.viewConstraints:
-            pass
-        
-        if self.viewLoads:
-            pass
-        
-        if self.viewSolutions:
-            pass
-        
-        if self.viewResults:
-            pass
-        
-        if self.viewNodes:
-            if cDL['displayLists']['nodes'] != None:
-                glCallList(cDL['displayLists']['nodes'])
-
-        if self.viewWireframe:
-            if cDL['displayLists']['wireframe'] != None:
-                glCallList(cDL['displayLists']['wireframe'])
-        else:
-            if cDL['displayLists']['wireframe'] != None:
-                glCallList(cDL['displayLists']['wireframe'])
-            if self.viewAveraged:
-                if cDL['displayLists']['average'] != None:
-                    glCallList(cDL['displayLists']['average'])
-            else:
-                if cDL['displayLists']['shaded'] != None:
-                    glCallList(cDL['displayLists']['shaded'])
-
-
-
-        # Render what is selected
-        # --------------------------
-        if self.model.nodesSelected:
-            pass
-        elif self.model.elementsSelected:
-            pass
-
-        elif self.model.linesSelected:
-            if self.model.displayLists['selected_lines'] != None:
-                glCallList(self.model.displayLists['selected_lines'])
-            else:
-                self.model.selected_lines.clear()
-                self.model.linesSelected = False
-        
-        elif self.model.facesSelected:
-            pass
-        else:
-            pass
-
-
-
-
         # Render all 2D overlay
         # ---------------------
         glClear(GL_DEPTH_BUFFER_BIT)

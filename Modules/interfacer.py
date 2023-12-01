@@ -866,6 +866,7 @@ is an OpenGL widget running inside this framework.
         filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', './')[0]
         part_name = 'part-'+str(len(self.model.parts)+1)
         self.model.parts[part_name] = Part(part_name)
+        self.model.parts[part_name].mesher = self.model.mesher
         
         if filename[-4:] == '.out':
             print('\n\tImport mesh from *.out file not ready')
@@ -888,6 +889,7 @@ is an OpenGL widget running inside this framework.
             print('\t*.sol, *.bdf, *.inp, *.dat, *.STP, *.STEP, *.mdl')
 
         self.model.setCurrentPart(part_name)
+        self.centerModel()
         self.viewAngled()
 
     def exportMesh(self):
@@ -944,7 +946,18 @@ is an OpenGL widget running inside this framework.
 
 
 
-        
+    def getNodeElementInfo(self):
+        for l in self.model.selected_lines:
+            line = self.model.selected_lines[l]
+            print('\nline number:', l)
+            print('type:', line.type)
+            print('length:', line.length)
+            if line.type == 'arc':
+                print('radius:', line.radius)
+                print('axis:', line.axis)
+            print('points:', line.points)
+
+
     def deleteItem(self):
         print('NOT READY!')
 
@@ -1163,8 +1176,6 @@ is an OpenGL widget running inside this framework.
     def createNewMesh(self):
         print('NOT READY!')
     def resizeElements(self):
-        print('NOT READY!')
-    def getNodeElementInfo(self):
         print('NOT READY!')
     def copyNodes(self):
         print('NOT READY!')

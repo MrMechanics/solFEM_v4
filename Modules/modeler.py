@@ -18,7 +18,7 @@
 #   *.out files.
 #
 
-
+from mesher import *
 from parts import *
 from meshes import *
 from elements import *
@@ -40,15 +40,16 @@ for the Finite Element Analysis.
     def __init__(self, interface):
 
         self.interface = interface
+        self.mesher = Mesher()
         
-        self.materials = {'6061-T6_aluminum (m kg N)':              {'Elasticity': 689e8, 'Poisson ratio': 0.35, 'Density':   2700.},
-                          '1010_carbon_steel (m kg N)':             {'Elasticity': 205e9, 'Poisson ratio': 0.29, 'Density':   7870.},
+        self.materials = {'6061-T6_aluminum (m kg N)':          {'Elasticity': 689e8, 'Poisson ratio': 0.35, 'Density':   2700.},
+                          '1010_carbon_steel (m kg N)':         {'Elasticity': 205e9, 'Poisson ratio': 0.29, 'Density':   7870.},
                           '316_stainless_steel (m kg N)':       {'Elasticity': 193e9, 'Poisson ratio': 0.27, 'Density':   7870.},
-                          'Grade2_titanium (m kg N)':            {'Elasticity': 105e9, 'Poisson ratio': 0.37, 'Density':   4510.},
+                          'Grade2_titanium (m kg N)':           {'Elasticity': 105e9, 'Poisson ratio': 0.37, 'Density':   4510.},
                           '6061-T6_aluminum (mm kg mN kPa)':    {'Elasticity': 689e5, 'Poisson ratio': 0.35, 'Density':  2.7e-6},
-                          '1010_carbon_steel (mm kg mN kPa)':    {'Elasticity': 205e6, 'Poisson ratio': 0.29, 'Density': 7.87e-6},
-                          '316_stainless_steel (mm kg mN kPa)':    {'Elasticity': 193e6, 'Poisson ratio': 0.27, 'Density': 7.87e-6},
-                          'Grade2_titanium (mm kg mN kPa)':         {'Elasticity': 105e6, 'Poisson ratio': 0.37, 'Density': 4.51e-6}}
+                          '1010_carbon_steel (mm kg mN kPa)':   {'Elasticity': 205e6, 'Poisson ratio': 0.29, 'Density': 7.87e-6},
+                          '316_stainless_steel (mm kg mN kPa)': {'Elasticity': 193e6, 'Poisson ratio': 0.27, 'Density': 7.87e-6},
+                          'Grade2_titanium (mm kg mN kPa)':     {'Elasticity': 105e6, 'Poisson ratio': 0.37, 'Density': 4.51e-6}}
         self.sections = {}
         self.parts = {}
 
