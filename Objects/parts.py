@@ -92,6 +92,8 @@ user to interact with.
                 face_type = 'cylindrical'
             elif geom.advanced_face[f][-2] in geom.toroidal_surface:
                 face_type = 'toroidal'
+            elif geom.advanced_face[f][-2] in geom.conical_surface:
+                face_type = 'conical'
             elif geom.advanced_face[f][-2] in geom.surface_of_revolution:
                 face_type = 'revolution'
             elif geom.advanced_face[f][-2] in geom.surface_of_linear_extrusion:
@@ -247,67 +249,35 @@ user to interact with.
             # DRAW FACES
             # -------------------
             glNewList(self.displayLists['faces'], GL_COMPILE)
-
             for f in self.faces:
-                if self.faces[f].type in ['cylindrical']:
+                if self.faces[f].type in ['conical', 'toroidal', 'plane', 'cylindrical']:
+                    glColor3f(self.colors['part_faces'][0], 
+                              self.colors['part_faces'][1],
+                              self.colors['part_faces'][2])
                     for e in self.faces[f].g_mesh['elements']:
-                        glColor3f(self.colors['part_faces'][0], 
-                                  self.colors['part_faces'][1],
-                                  self.colors['part_faces'][2])
-                        if self.faces[f].normal_v == Vector3D(0,0,-1):
-                            glBegin(GL_TRIANGLES)
-                            elm = self.faces[f].g_mesh['elements'][e]
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
-                            glEnd()
-                            glColor3f(self.colors['part_faces_inside'][0], 
-                                      self.colors['part_faces_inside'][1],
-                                      self.colors['part_faces_inside'][2])
-                            glBegin(GL_TRIANGLES)
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
-                            glEnd()
-                        else:
-                            glBegin(GL_TRIANGLES)
-                            elm = self.faces[f].g_mesh['elements'][e]
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
-                            glEnd()
-                            glColor3f(self.colors['part_faces_inside'][0], 
-                                      self.colors['part_faces_inside'][1],
-                                      self.colors['part_faces_inside'][2])
-                            glBegin(GL_TRIANGLES)
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
-                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
-                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
-                            glEnd()
+                        glBegin(GL_TRIANGLES)
+                        elm = self.faces[f].g_mesh['elements'][e]
+                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                   self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                   self.faces[f].g_mesh['nodes'][elm[0]][2])
+                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                   self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                   self.faces[f].g_mesh['nodes'][elm[1]][2])
+                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                   self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                   self.faces[f].g_mesh['nodes'][elm[2]][2])
+                        glEnd()
+                        glBegin(GL_TRIANGLES)
+                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                   self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                   self.faces[f].g_mesh['nodes'][elm[2]][2])
+                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                   self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                   self.faces[f].g_mesh['nodes'][elm[1]][2])
+                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                   self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                   self.faces[f].g_mesh['nodes'][elm[0]][2])
+                        glEnd()
                 else:
                     pass
             glEndList()
@@ -351,13 +321,29 @@ user to interact with.
 
             # draw surface normals for debugging
             for f in self.faces:
-                if self.faces[f].type == 'plane':
+                if self.faces[f].type == 'planeiii':
                     glColor3f(0.9,0,0)
                     glBegin(GL_LINES)
                     glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
                     glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
                     glEnd()
-                if self.faces[f].type == 'cylindrical':
+                if self.faces[f].type == 'cylindricaliii':
+                    glColor3f(0.9,0,0)
+                    if self.faces[f].inwards == True:
+                        glColor3f(0,0.9,0)
+                    glBegin(GL_LINES)
+                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
+                    glEnd()
+                if self.faces[f].type == 'toroidaliii':
+                    glColor3f(0.9,0,0)
+                    if self.faces[f].inwards == True:
+                        glColor3f(0,0.9,0)
+                    glBegin(GL_LINES)
+                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
+                    glEnd()
+                if self.faces[f].type == 'conical':
                     glColor3f(0.9,0,0)
                     if self.faces[f].inwards == True:
                         glColor3f(0,0.9,0)

@@ -344,7 +344,7 @@ class Arc(Line):
             dot_product2 = np.dot(v0,v2)
             dot_product2 = np.clip(dot_product2,-1,1)
             ang2 = np.arccos(dot_product2)
-
+            
             # check if angles are larger than 180 degrees
             # THIS PART OF THE CODE IS SENSITIVE TO HOW MANY
             # DECIMALS ARE BEING USED IN THE INPUT
@@ -360,11 +360,11 @@ class Arc(Line):
             else:
                 v2_test = v0_test
 
-            check1 = (v0_test == v1_test)
+            check1 = (np.round(v0_test,decimals=6) == np.round(v1_test,decimals=6))
             if not np.all(check1 == True):
                 ang1 = 2*np.pi-ang1
                 
-            check2 = (v0_test == v2_test)
+            check2 = (np.round(v0_test,decimals=6) == np.round(v2_test,decimals=6))
             if not np.all(check2 == True):
                 ang2 = 2*np.pi-ang2
                     
@@ -420,7 +420,6 @@ class Ellipse(Line):
         orig = (self.center.x(),self.center.y(),self.center.z())
         xvec = (self.axis.x_vec.x(),self.axis.x_vec.y(),self.axis.x_vec.z())
         yvec = (self.axis.y_vec.x(),self.axis.y_vec.y(),self.axis.y_vec.z())
-        zvec = (self.axis.z_vec.x(),self.axis.z_vec.y(),self.axis.z_vec.z())
         pnts = 36
         pnt1 = points[0]
         pnt2 = points[1]
@@ -467,11 +466,11 @@ class Ellipse(Line):
             else:
                 v2_test = v0_test
 
-            check1 = (v0_test == v1_test)
+            check1 = (np.round(v0_test,decimals=6) == np.round(v1_test,decimals=6))
             if not np.all(check1 == True):
                 ang1 = 2*np.pi-ang1
                 
-            check2 = (v0_test == v2_test)
+            check2 = (np.round(v0_test,decimals=6) == np.round(v2_test,decimals=6))
             if not np.all(check2 == True):
                 ang2 = 2*np.pi-ang2
                     
@@ -691,6 +690,30 @@ class Face(object):
             p1 = geom.cartesian_point[geom.axis2_placement_3D[geom.cylindrical_surface[geom.advanced_face[self.number][-2]][0]][0]]
             v1 = geom.direction[geom.axis2_placement_3D[geom.cylindrical_surface[geom.advanced_face[self.number][-2]][0]][1]]
             self.radius = geom.cylindrical_surface[geom.advanced_face[self.number][-2]][1]
+            # check if inwards or outwards
+            self.normal = [Point3D(p1[0], p1[1], p1[2]), Point3D(p1[0]+v1[0], p1[1]+v1[1], p1[2]+v1[2])]
+            self.normal_v = self.normal[1] - self.normal[0]
+            self.normal_v = self.normal_v.normalized()
+            self.inwards = True
+            if not geom.advanced_face[self.number][-1]:
+                self.inwards = False
+        if self.type == 'toroidal':
+            p1 = geom.cartesian_point[geom.axis2_placement_3D[geom.toroidal_surface[geom.advanced_face[self.number][-2]][0]][0]]
+            v1 = geom.direction[geom.axis2_placement_3D[geom.toroidal_surface[geom.advanced_face[self.number][-2]][0]][1]]
+            self.major_radius = geom.toroidal_surface[geom.advanced_face[self.number][-2]][1]
+            self.minor_radius = geom.toroidal_surface[geom.advanced_face[self.number][-2]][2]
+            # check if inwards or outwards
+            self.normal = [Point3D(p1[0], p1[1], p1[2]), Point3D(p1[0]+v1[0], p1[1]+v1[1], p1[2]+v1[2])]
+            self.normal_v = self.normal[1] - self.normal[0]
+            self.normal_v = self.normal_v.normalized()
+            self.inwards = True
+            if not geom.advanced_face[self.number][-1]:
+                self.inwards = False
+        if self.type == 'conical':
+            p1 = geom.cartesian_point[geom.axis2_placement_3D[geom.conical_surface[geom.advanced_face[self.number][-2]][0]][0]]
+            v1 = geom.direction[geom.axis2_placement_3D[geom.conical_surface[geom.advanced_face[self.number][-2]][0]][1]]
+            self.base_radius = geom.conical_surface[geom.advanced_face[self.number][-2]][1]
+            self.semi_angle = geom.conical_surface[geom.advanced_face[self.number][-2]][2]
             # check if inwards or outwards
             self.normal = [Point3D(p1[0], p1[1], p1[2]), Point3D(p1[0]+v1[0], p1[1]+v1[1], p1[2]+v1[2])]
             self.normal_v = self.normal[1] - self.normal[0]

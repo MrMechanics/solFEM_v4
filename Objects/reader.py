@@ -67,7 +67,9 @@ for easy access by the Part object.
         self.plane = {}
         self.cylindrical_surface = {}
         self.toroidal_surface = {}
+        self.conical_surface = {}
         self.surface_of_revolution = {}
+        self.surface_of_linear_extrusion = {}
         self.b_spline_surface = {}
         self.face_bound = {}
         self.face_outer_bound = {}
@@ -120,8 +122,12 @@ for easy access by the Part object.
                             self.cylindrical_surface[index] = data 
                         elif data_type == "TOROIDAL_SURFACE":
                             self.toroidal_surface[index] = data 
+                        elif data_type == "CONICAL_SURFACE":
+                            self.conical_surface[index] = data 
                         elif data_type == "SURFACE_OF_REVOLUTION":
                             self.surface_of_revolution[index] = data 
+                        elif data_type == "SURFACE_OF_LINEAR_EXTRUSION":
+                            self.surface_of_linear_extrusion[index] = data 
                         elif data_type == "B_SPLINE_SURFACE":
                             self.b_spline_surface[index] = data 
                         elif data_type == "FACE_BOUND":
@@ -155,6 +161,12 @@ for easy access by the Part object.
                     return None
                 index = int(index_match.group(1))
                 return 'B_SPLINE_SURFACE', index, self.parse_b_spline_surface(line)
+            if 'BOUNDED_CURVE' in line:
+                index_match = re.match(r'#(\d+)', line)
+                if not index_match:
+                    return None
+                index = int(index_match.group(1))
+                return 'B_SPLINE_CURVE_WITH_KNOTS', index, self.parse_b_spline_curve(line)
             return None
     
         index = int(match.group(1))
@@ -299,7 +311,19 @@ for easy access by the Part object.
             minor_radius = round(float(components[2]),self.round_to_decimal_place)
             return data_type, index, (ref_point, major_radius, minor_radius)
     
+        elif data_type == "CONICAL_SURFACE":
+            components = [comp.strip() for comp in data.split(',')]
+            ref_point = int(re.search(r'#(\d+)', components[0]).group(1))
+            radius = round(float(components[1]),self.round_to_decimal_place)
+            semi_angle = round(float(components[2]),self.round_to_decimal_place)
+            return data_type, index, (ref_point, radius, semi_angle)
+    
         elif data_type == "SURFACE_OF_REVOLUTION":
+            components = [comp.strip() for comp in data.split(',')]
+            refs = tuple(int(val) for val in re.findall(r'#(\d+)', data))
+            return data_type, index, refs
+        
+        elif data_type == "SURFACE_OF_LINEAR_EXTRUSION":
             components = [comp.strip() for comp in data.split(',')]
             refs = tuple(int(val) for val in re.findall(r'#(\d+)', data))
             return data_type, index, refs
@@ -507,6 +531,41 @@ for easy access by the Part object.
             'weights': weights
         }
 
+
+    def parse_b_spline_curve(self,line):
+        # B_SPLINE_CURVE extraction
+        pattern_bspline = r"B_SPLINE_CURVE\s*\(\s*(\d+),\s*\(\s*(#\d+(?:\s*,\s*#\d+)*)\s*\)\s*,"
+        match_bspline = re.search(pattern_bspline, line)
+        if not match_bspline:
+            raise ValueError(f"Unexpected format for B_SPLINE_CURVE in line: {line}")
+    
+        degree = int(match_bspline.group(1))
+        control_points = tuple(map(int, re.findall(r'#(\d+)', match_bspline.group(2))))
+    
+        # B_SPLINE_CURVE_WITH_KNOTS extraction
+        pattern_knots = r"B_SPLINE_CURVE_WITH_KNOTS\s*\(\s*\(([^)]*)\)\s*,\s*\(([^)]*)\)\s*,"
+        match_knots = re.search(pattern_knots, line)
+        if not match_knots:
+            raise ValueError(f"Unexpected format for B_SPLINE_CURVE_WITH_KNOTS in line: {line}")
+    
+        multiplicities = tuple(map(int, match_knots.group(1).split(',')))
+        knots = tuple(map(float, match_knots.group(2).split(',')))
+    
+        # RATIONAL_B_SPLINE_CURVE extraction (optional)
+        pattern_rational = r"RATIONAL_B_SPLINE_CURVE\s*\(\s*\(([^)]*)\)\s*\)"
+        match_rational = re.search(pattern_rational, line)
+        weights = None
+        if match_rational:
+            weights = tuple(map(float, re.findall(r'(-?\d+\.\d+e?-?\d+)', match_rational.group(1))))
+    
+        return {
+            'type': 'B_SPLINE_CURVE',
+            'degree': degree,
+            'control_points': control_points,
+            'knot_multiplicities': multiplicities,
+            'knot_values': knots,
+            'weights': weights
+        }
 
 
 
@@ -1337,5 +1396,5 @@ is accessible to the FEModel object.
 
 
 if __name__ == '__main__':
-    stpf = StepFileData('test_part6_AP214.step')
+    stpf = StepFileData('test_part3_AP214.step')
         
