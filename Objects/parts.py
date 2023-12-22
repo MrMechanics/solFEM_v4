@@ -62,11 +62,11 @@ user to interact with.
                            'min': [-1.,-1.,-1.]}
         self.view_radius = 2.
         self.colors = {'part_lines':         (0.05, 0.10, 0.05, 1.0),
-                       'part_faces':         (0.32, 0.43, 0.49, 1.0),
+                       'part_faces':         (0.66796875, 0.6171875, 0.44921875, 1.0),
                        'part_faces_inside':  (0.62, 0.63, 0.19, 1.0),
                        'element_lines_pre':  (0.50, 0.50, 0.50, 1.0),
                        'element_lines_post': (0.50, 0.50, 0.50, 1.0),
-                       'element_faces_pre':  (0.50, 0.50, 0.50, 1.0),
+                       'element_faces_pre':  (0.336, 0.447, 0.588, 1.0),
                        'element_faces_post': (0.50, 0.50, 0.50, 1.0)}
         self.displayLists = {'nodes':       None,
                              'wireframe':   None,
@@ -194,7 +194,7 @@ user to interact with.
 #        elif 2D planar model?
         else:
             print('Unknown model type')
-        print('\n  Number of faces: ', len(geom.advanced_face))
+        print('\n  Number of faces:    ', len(geom.advanced_face))
         print('  Number of vertices: ', len(geom.vertex_point))
 		
         self.x_max = max(self.lines[l].points[j].x() for l in self.lines for j in range(len(self.lines[l].points)))
@@ -204,9 +204,9 @@ user to interact with.
         self.z_max = max(self.lines[l].points[j].z() for l in self.lines for j in range(len(self.lines[l].points)))
         self.z_min = min(self.lines[l].points[j].z() for l in self.lines for j in range(len(self.lines[l].points)))
 		
-        print('\n  x-min:', self.x_min, '\tx-max:', self.x_max)
-        print('  y-min:', self.y_min, '\ty-max:', self.y_max)
-        print('  z-min:', self.z_min, '\tz-max:', self.z_max)
+        print(f'\n  x-min: {self.x_min:.2f} \tx-max: {self.x_max:.2f}')
+        print(f'  y-min: {self.y_min:.2f} \ty-max: {self.y_max:.2f}')
+        print(f'  z-min: {self.z_min:.2f} \tz-max: {self.z_max:.2f}')
 #        self.center_of_mass = (0., 0., 0.)
 #        print('\n  Center of mass:', self.center_of_mass)
 #        self.volume = 0.
