@@ -71,9 +71,9 @@ for the Finite Element Analysis.
         self.scaleShearBendDiagram = 1.
         self.scale_factor = 20.
         self.colors = {'selected':       (1.00, 0.00, 0.00, 1.0),
-                       'loads':          (0.50, 0.50, 0.50, 1.0),
-                       'displacements':  (0.50, 0.50, 0.50, 1.0),
-                       'constraints':    (0.50, 0.50, 0.50, 1.0)}
+                       'loads':          (0.6875, 0.3984375, 0.375, 1.0),
+                       'displacements':  (0.4140625, 0.48828125, 0.5546875, 1.0),
+                       'constraints':    (0.7890625, 0.55859375, 0.2578125, 1.0)}
         self.displayLists = {'selected_nodes': None,
                              'selected_elements': None,
                              'selected_lines': None,

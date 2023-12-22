@@ -84,13 +84,12 @@ animations, loads, etc.
         self.selectionRectangleStart = [0,0]
         self.selectionRectangleEnd = [0,0]
 
-        self.colors = {'background_pre':     (0.330, 0.430, 0.330, 1.0),
-                       'background_post':    (0.336, 0.447, 0.588, 1.0),
-                       'elements':           (0.336, 0.447, 0.588, 1.0),
-                       'loads':              (0.336, 0.447, 0.588, 1.0),
-                       'boundaries':         (0.336, 0.447, 0.588, 1.0),
-                       'boundaries_rot':     (0.336, 0.447, 0.588, 1.0),
-                       'constraints':        (0.336, 0.447, 0.588, 1.0)}
+        self.colors = {'background_pre':    (0.60546875, 0.68359375, 0.5546875, 1.0),
+                       'background_post':   (0.6796875, 0.73046875, 0.77734375, 1.0),
+                       'boundaries':        (0.4140625, 0.48828125, 0.5546875),
+                       'boundaries_rot':    (0.336, 0.447, 0.588, 1.0),
+                       'loads':             (0.6875, 0.3984375, 0.375, 1.0),
+                       'constraints':       (0.7890625, 0.55859375, 0.2578125, 1.0)}
         self.currentDisplayList = { 'part':          'None',
                                     'solution':      'None',
                                     'result':        'None',
@@ -240,7 +239,14 @@ animations, loads, etc.
                 self.model.linesSelected = False
         
         elif self.model.facesSelected:
-            pass
+            if self.model.displayLists['selected_lines'] != None:
+                glCallList(self.model.displayLists['selected_lines'])
+            if self.model.displayLists['selected_faces'] != None:
+                glCallList(self.model.displayLists['selected_faces'])
+            else:
+                self.model.selected_lines.clear()
+                self.model.linesSelected = False
+                
         else:
             pass
 
@@ -449,10 +455,18 @@ animations, loads, etc.
     Clear the model selection variables when the
     left mousebutton is doubble-clicked.
     '''
-        self.model.selected_elements.clear()
-        self.model.elementsSelected = False
         self.model.selected_nodes.clear()
         self.model.nodesSelected = False
+        self.model.displayLists['selected_nodes'] = None
+        self.model.selected_elements.clear()
+        self.model.elementsSelected = False
+        self.model.displayLists['selected_elements'] = None
+        self.model.selected_lines.clear()
+        self.model.linesSelected = False
+        self.model.displayLists['selected_lines'] = None
+        self.model.selected_faces.clear()
+        self.model.facesSelected = False
+        self.model.displayLists['selected_faces'] = None
         self.update()
 
 
@@ -477,8 +491,16 @@ animations, loads, etc.
         if self.activeSelection:
             if self.model.selectOption in ['nodes', 'elements']:
                 self.model.selected_nodes = self.select()
+                if len(self.model.selected_lines) == 0:
+                    self.model.displayLists['selected_nodes'] = None
+                if len(self.model.selected_faces) == 0:
+                    self.model.displayLists['selected_elements'] = None
             elif self.model.selectOption in ['lines', 'faces']:
                 self.model.selected_lines = self.select()
+                if len(self.model.selected_lines) == 0:
+                    self.model.displayLists['selected_lines'] = None
+                if len(self.model.selected_faces) == 0:
+                    self.model.displayLists['selected_faces'] = None
             else:
                 pass
             self.model.selectedFeaturesDisplayList()
