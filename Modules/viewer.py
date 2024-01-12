@@ -84,12 +84,12 @@ animations, loads, etc.
         self.selectionRectangleStart = [0,0]
         self.selectionRectangleEnd = [0,0]
 
-        self.colors = {'background_pre':    (0.60546875, 0.68359375, 0.5546875, 1.0),
-                       'background_post':   (0.6796875, 0.73046875, 0.77734375, 1.0),
-                       'boundaries':        (0.4140625, 0.48828125, 0.5546875),
-                       'boundaries_rot':    (0.336, 0.447, 0.588, 1.0),
-                       'loads':             (0.6875, 0.3984375, 0.375, 1.0),
-                       'constraints':       (0.7890625, 0.55859375, 0.2578125, 1.0)}
+        self.colors = {'background_pre':    (0.73046875, 0.73046875, 0.73046875, 1.0),
+                       'background_post':   (0.73046875, 0.73046875, 0.73046875, 1.0),
+                       'boundaries':        (0.,         0.6328125,  0.90625,    1.0),
+                       'boundaries_rot':    (0.59765625, 0.84765625, 0.9140625,  1.0),
+                       'loads':             (0.92578125, 0.109375,   0.140625,   1.0),
+                       'constraints':       (0.99609375, 0.49609375, 0.15234375, 1.0)}
         self.currentDisplayList = { 'part':          'None',
                                     'solution':      'None',
                                     'result':        'None',
@@ -106,7 +106,10 @@ animations, loads, etc.
                                     'displayLists': {'orientation':  None,
                                                      'nodes':        None,
                                                      'wireframe':    None,
-                                                     'shaded':       None,
+                                                     'elements':     None,
+                                                     'seeds':        None,
+                                                     'lines':        None,
+                                                     'faces':        None,
                                                      'average':      None }}
 
         self.camera = Camera()
@@ -185,10 +188,35 @@ animations, loads, etc.
             pass
         
         if self.viewGeometry:
-            pass
+            if self.viewNodes:
+                if cDL['displayLists']['seeds'] != None:
+                    glCallList(cDL['displayLists']['seeds'])
+            if self.viewWireframe:
+                if cDL['displayLists']['lines'] != None:
+                    glCallList(cDL['displayLists']['lines'])
+            else:
+                if cDL['displayLists']['lines'] != None:
+                    glCallList(cDL['displayLists']['lines'])
+                if cDL['displayLists']['faces'] != None:
+                    glCallList(cDL['displayLists']['faces'])
 
         if self.viewMesh:
-            pass
+            if self.viewNodes:
+                if cDL['displayLists']['nodes'] != None:
+                    glCallList(cDL['displayLists']['nodes'])
+    
+            if self.viewWireframe:
+                if cDL['displayLists']['wireframe'] != None:
+                    glCallList(cDL['displayLists']['wireframe'])
+            else:
+                if cDL['displayLists']['wireframe'] != None:
+                    glCallList(cDL['displayLists']['wireframe'])
+                if self.viewAveraged:
+                    if cDL['displayLists']['average'] != None:
+                        glCallList(cDL['displayLists']['average'])
+                else:
+                    if cDL['displayLists']['elements'] != None:
+                        glCallList(cDL['displayLists']['elements'])
         
         if self.viewBoundaries:
             pass
@@ -205,24 +233,6 @@ animations, loads, etc.
         if self.viewResults:
             pass
         
-        if self.viewNodes:
-            if cDL['displayLists']['nodes'] != None:
-                glCallList(cDL['displayLists']['nodes'])
-
-        if self.viewWireframe:
-            if cDL['displayLists']['wireframe'] != None:
-                glCallList(cDL['displayLists']['wireframe'])
-        else:
-            if cDL['displayLists']['wireframe'] != None:
-                glCallList(cDL['displayLists']['wireframe'])
-            if self.viewAveraged:
-                if cDL['displayLists']['average'] != None:
-                    glCallList(cDL['displayLists']['average'])
-            else:
-                if cDL['displayLists']['shaded'] != None:
-                    glCallList(cDL['displayLists']['shaded'])
-
-
 
         # Render what is selected
         # --------------------------
@@ -230,25 +240,18 @@ animations, loads, etc.
             pass
         elif self.model.elementsSelected:
             pass
-
         elif self.model.linesSelected:
             if self.model.displayLists['selected_lines'] != None:
                 glCallList(self.model.displayLists['selected_lines'])
-            else:
-                self.model.selected_lines.clear()
-                self.model.linesSelected = False
-        
         elif self.model.facesSelected:
             if self.model.displayLists['selected_lines'] != None:
                 glCallList(self.model.displayLists['selected_lines'])
             if self.model.displayLists['selected_faces'] != None:
                 glCallList(self.model.displayLists['selected_faces'])
-            else:
-                self.model.selected_lines.clear()
-                self.model.linesSelected = False
-                
         else:
             pass
+
+
 
 
 
@@ -489,25 +492,101 @@ animations, loads, etc.
     '''
         self.mouseButtonPressed = False
         if self.activeSelection:
-            if self.model.selectOption in ['nodes', 'elements']:
-                self.model.selected_nodes = self.select()
-                if len(self.model.selected_lines) == 0:
-                    self.model.displayLists['selected_nodes'] = None
-                if len(self.model.selected_faces) == 0:
-                    self.model.displayLists['selected_elements'] = None
-            elif self.model.selectOption in ['lines', 'faces']:
-                self.model.selected_lines = self.select()
-                if len(self.model.selected_lines) == 0:
-                    self.model.displayLists['selected_lines'] = None
-                if len(self.model.selected_faces) == 0:
-                    self.model.displayLists['selected_faces'] = None
+            if self.viewGeometry:
+                if self.model.currentPart != None:
+                    selected_lines = self.select()
+                    if self.activeSHIFT:
+                        for l in selected_lines:
+                            if l not in self.model.selected_lines:
+                                self.model.selected_lines[l] = selected_lines[l]
+                    elif self.activeCTRL:
+                        for l in selected_lines:
+                            if l in self.model.selected_lines:
+                                del self.model.selected_lines[l]
+                    else:
+                        self.model.selected_lines = selected_lines
+                    if self.model.selectOption == 'lines':
+                        if len(self.model.selected_lines) == 0:
+                            self.model.displayLists['selected_lines'] = None
+                    if self.model.selectOption == 'faces':
+                        if not (self.activeSHIFT or self.activeCTRL):
+                            self.model.selected_faces.clear()
+                        for f in self.model.currentPart.faces:
+                            face_check = [False for e in range(len(self.model.currentPart.faces[f].edges))]
+                            for i, e in enumerate(self.model.currentPart.faces[f].edges):
+                                e_lines = list(self.model.currentPart.faces[f].edges[e].lines.keys())
+                                if self.activeSHIFT or self.activeCTRL:
+                                    if self.allInLargerList(e_lines, selected_lines):
+                                        face_check[i] = True
+                                else:
+                                    if self.allInLargerList(e_lines, self.model.selected_lines):
+                                        face_check[i] = True
+                            if False not in face_check:
+                                if self.activeCTRL:
+                                    del self.model.selected_faces[f]
+                                else:
+                                    self.model.selected_faces[f] = self.model.currentPart.faces[f]
+#                        print('selected_faces:', self.model.selected_faces)
+                        if len(self.model.selected_faces) == 0:
+                            self.model.displayLists['selected_faces'] = None
+                    if self.model.selectOption == 'volumes':
+                        if len(self.model.selected_volumes) == 0:
+                            self.model.displayLists['selected_volumes'] = None
+                        
+            elif self.viewAssembly:
+                pass
+
+            elif self.viewMesh:
+                pass
+
             else:
                 pass
+
+            if self.model.selectOption in ['nodes', 'elements']:
+                selected_nodes = self.select()
+                if len(self.model.selected_nodes) == 0:
+                    self.model.displayLists['selected_nodes'] = None
+                if len(self.model.selected_elements) == 0:
+                    self.model.displayLists['selected_elements'] = None
+            else:
+                pass
+            self.updateSelected()
             self.model.selectedFeaturesDisplayList()
             self.activeSelection = False
             self.update()
         
         
+    def updateSelected(self):
+        '''
+    Updates the status of all selected items in case
+    user changed the selectOption before making the
+    new selection.
+    '''
+        if self.model.selectOption != 'lines':
+            self.model.linesSelected = False
+            self.model.displayLists['selected_lines'] = None
+        if self.model.selectOption != 'faces':
+            self.model.facesSelected = False
+            self.model.displayLists['selected_faces'] = None
+        if self.model.selectOption != 'volumes':
+            self.model.volumesSelected = False
+            self.model.displayLists['selected_volumes'] = None
+        if self.model.selectOption != 'elements':
+            self.model.elementsSelected = False
+            self.model.displayLists['selected_elements'] = None
+        self.update()
+
+
+    def allInLargerList(self, smaller, larger):
+        '''
+    Helper function. Checks if all items in the 
+    smaller list are present in the larger list.
+    '''
+        larger_set = set(larger)
+        for item in smaller:
+            if item not in larger_set:
+                return False
+        return True
         
 
     def select(self):
@@ -585,7 +664,7 @@ animations, loads, etc.
             self.model.selectedFeaturesDisplayList()
             return selected_nodes
 
-        elif self.model.selectOption in ['lines', 'faces']: 
+        elif self.model.selectOption in ['lines', 'faces', 'volumes']: 
             selected_lines = {}
             if len(self.model.currentPart.lines) != 0:
                 partlines = self.model.currentPart.lines
@@ -659,21 +738,38 @@ animations, loads, etc.
                 cDL['view_radius'] = self.model.currentPart.view_radius
                 cDL['view_scope'] = self.model.currentPart.view_scope
                 cDL['displayLists']['orientation'] = None
-                cDL['displayLists']['nodes'] = self.model.currentPart.displayLists['seeds']
-                cDL['displayLists']['wireframe'] = self.model.currentPart.displayLists['lines']
-                cDL['displayLists']['shaded'] = self.model.currentPart.displayLists['faces']
+                cDL['displayLists']['nodes'] = None
+                cDL['displayLists']['wireframe'] = None
+                cDL['displayLists']['elements'] = None
                 cDL['displayLists']['average'] = None
+                cDL['displayLists']['seeds'] = self.model.currentPart.displayLists['seeds']
+                cDL['displayLists']['lines'] = self.model.currentPart.displayLists['lines']
+                cDL['displayLists']['faces'] = self.model.currentPart.displayLists['faces']
+
+        elif self.viewAssembly:
+            pass
 
         elif self.viewResults:
             pass
                 
         elif self.viewMesh:
-            pass
+            if self.model.currentPart != None:
+                cDL['part'] = self.model.currentPart.name
+                cDL['view_radius'] = self.model.currentPart.view_radius
+                cDL['view_scope'] = self.model.currentPart.view_scope
+                cDL['displayLists']['orientation'] = None
+                cDL['displayLists']['nodes'] = self.model.currentPart.displayLists['nodes']
+                cDL['displayLists']['wireframe'] = self.model.currentPart.displayLists['wireframe']
+                cDL['displayLists']['elements'] = self.model.currentPart.displayLists['elements']
+                cDL['displayLists']['average'] = None
+                cDL['displayLists']['seeds'] = None
+                cDL['displayLists']['lines'] = None
+                cDL['displayLists']['faces'] = None
             
         else:
             pass
 
         self.camera.setSceneRadius( cDL['view_radius'] )
-        
+        self.update()
         
         

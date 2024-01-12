@@ -52,7 +52,9 @@ for the Finite Element Analysis.
                           'Grade2_titanium (mm kg mN kPa)':     {'Elasticity': 105e6, 'Poisson ratio': 0.37, 'Density': 4.51e-6}}
         self.sections = {}
         self.parts = {}
+        self.assemblies = {}
 
+        self.currentAssembly = None
         self.currentPart = None
         self.currentSolution = None
         self.currentResults = {'solution': None, 'result': None, 'subresult': None}
@@ -65,12 +67,15 @@ for the Finite Element Analysis.
         self.selected_lines = {}
         self.facesSelected = False
         self.selected_faces = {}
+        self.volumesSelected = False
+        self.selected_volumes = {}
         self.selectOption = 'lines'
         
         self.results = {}
         self.scaleShearBendDiagram = 1.
         self.scale_factor = 20.
-        self.colors = {'selected':       (1.00, 0.00, 0.00, 1.0),
+        self.colors = {'selected_lines': (1.00, 0.00, 0.00, 1.0),
+                       'selected_faces': (0.80, 0.10, 0.10, 1.0),
                        'loads':          (0.6875, 0.3984375, 0.375, 1.0),
                        'displacements':  (0.4140625, 0.48828125, 0.5546875, 1.0),
                        'constraints':    (0.7890625, 0.55859375, 0.2578125, 1.0)}
@@ -78,6 +83,7 @@ for the Finite Element Analysis.
                              'selected_elements': None,
                              'selected_lines': None,
                              'selected_faces': None,
+                             'selected_volumes': None,
                              'solutions': {}}
 
 
@@ -108,27 +114,64 @@ for the Finite Element Analysis.
     Create a displaylist for the currently selected
     lines, faces, nodes or elements.
     '''
+#        print('INSIDE selectedFeaturesDisplayList()')
         if self.selectOption == 'lines':
             if len(self.selected_lines) != 0:
                 self.linesSelected = True
                 self.displayLists['selected_lines'] = glGenLists(1)
                 glNewList(self.displayLists['selected_lines'], GL_COMPILE)
                 glLineWidth(5.0)
-                glColor3f(self.colors['selected'][0],
-                          self.colors['selected'][1],
-                          self.colors['selected'][2])
+                glColor3f(self.colors['selected_lines'][0],
+                          self.colors['selected_lines'][1],
+                          self.colors['selected_lines'][2])
+                glBegin(GL_LINES)
                 for line in self.selected_lines:
                     for point in range(len(self.selected_lines[line].points)-1):
-                        glBegin(GL_LINES)
                         coord = self.selected_lines[line].points[point]
                         glVertex3f(coord.x(),coord.y(),coord.z())
                         coord = self.selected_lines[line].points[point+1]
                         glVertex3f(coord.x(),coord.y(),coord.z())
-                        glEnd()
+                glEnd()
                 glEndList()        
             
         if self.selectOption == 'faces':
-            pass
+            if len(self.selected_faces) != 0:
+                self.facesSelected = True
+                self.displayLists['selected_faces'] = glGenLists(1)
+                glNewList(self.displayLists['selected_faces'], GL_COMPILE)
+                for f in self.selected_faces:
+                    if self.selected_faces[f].type in ['conical', 'toroidal', 'plane', 'cylindrical']:
+                        glColor3f(self.colors['selected_faces'][0], 
+                                  self.colors['selected_faces'][1],
+                                  self.colors['selected_faces'][2])
+                        for e in self.selected_faces[f].g_mesh['elements']:
+                            glBegin(GL_TRIANGLES)
+                            elm = self.selected_faces[f].g_mesh['elements'][e]
+                            glVertex3f(self.selected_faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[0]][2])
+                            glVertex3f(self.selected_faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.selected_faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[2]][2])
+                            glEnd()
+                            glBegin(GL_TRIANGLES)
+                            glVertex3f(self.selected_faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[2]][2])
+                            glVertex3f(self.selected_faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.selected_faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.selected_faces[f].g_mesh['nodes'][elm[0]][2])
+                            glEnd()
+                    else:
+                        pass
+                glEndList()     
+                
         if self.selectOption == 'nodes':
             glPointSize(10.0)
         else:

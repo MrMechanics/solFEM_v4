@@ -908,40 +908,36 @@ is an OpenGL widget running inside this framework.
         '''
     Set mouse pointer to select nodes.
     '''
-        if len(self.model.selected_elements) != 0:
-            self.model.selected_elements.clear()
-            self.viewer.update()
-        self.model.selectOption = 'Nodes'
+        if self.model.elementsSelected:
+            self.viewer.updateSelected()
+        self.model.selectOption = 'nodes'
         self.statusBar().showMessage('  Selecting... nodes' )
 
     def selectElements(self):
         '''
     Set mouse pointer to select elements.
     '''
-        if len(self.model.selected_nodes) != 0:
-            self.model.selected_nodes.clear()
-            self.viewer.update()
-        self.model.selectOption = 'Elements'
+        if self.model.nodesSelected:
+            self.viewer.updateSelected()
+        self.model.selectOption = 'elements'
         self.statusBar().showMessage('  Selecting... elements' )        
 
     def selectLines(self):
         '''
     Set mouse pointer to select lines.
     '''
-        if len(self.model.selected_lines) != 0:
-            self.model.selected_lines.clear()
-            self.viewer.update()
-        self.model.selectOption = 'Lines'
+        if self.model.linesSelected:
+            self.viewer.updateSelected()
+        self.model.selectOption = 'lines'
         self.statusBar().showMessage('  Selecting... lines' )
 
     def selectFaces(self):
         '''
     Set mouse pointer to select faces.
     '''
-        if len(self.model.selected_faces) != 0:
-            self.model.selected_faces.clear()
-            self.viewer.update()
-        self.model.selectOption = 'Faces'
+        if self.model.facesSelected:
+            self.viewer.updateSelected()
+        self.model.selectOption = 'faces'
         self.statusBar().showMessage('  Selecting... faces' )
 
 
@@ -1137,13 +1133,91 @@ is an OpenGL widget running inside this framework.
 
 
     def seedLines(self):
-        print('NOT READY!')
+        '''
+    Seed selected lines with input from
+    the user using a dialog box.
+    '''
+        if self.model.linesSelected:
+            elm_size = 5.
+            text, ok = QtWidgets.QInputDialog.getText(self, 'Seed Lines', 'Element size:', text=str(elm_size))
+            if ok and (len(self.model.selected_lines) != 0):
+                try:
+                    elm_size = float(text)
+                except ValueError:
+                    print(f'\n\tWARNING!!! {text} is not a valid element size')
+                else:
+                    for l in self.model.selected_lines:
+                        self.model.mesher.seedLine(self.model.selected_lines[l],float(text))
+                for e in self.model.currentPart.edges:
+                    self.model.currentPart.edges[e].updateSeeds()
+                self.model.currentPart.generateDisplayLists('geometry',False,False,True)
+                self.viewer.updateDisplayList()
+        else:
+            print('\n\tNo lines selected.')
     def seedPart(self):
-        print('NOT READY!')
+        '''
+    Seed selected part with input from
+    the user using a dialog box.
+    '''
+        if self.model.currentPart == None:
+            print('\n\tNo part currently selected.')
+        else:
+            elm_size = 5.
+            text, ok = QtWidgets.QInputDialog.getText(self, 'Seed Geometry', 'Element size:', text=str(elm_size))
+            if ok:
+                try:
+                    elm_size = float(text)
+                except ValueError:
+                    print(f'\n\tWARNING!!! {text} is not a valid element size')
+                else:
+                    for l in self.model.currentPart.lines:
+                        self.model.mesher.seedLine(self.model.currentPart.lines[l],float(text))
+                for e in self.model.currentPart.edges:
+                    self.model.currentPart.edges[e].updateSeeds()
+                self.model.currentPart.generateDisplayLists('geometry',False,False,True)
+                self.viewer.updateDisplayList()
     def meshFaces(self):
-        print('NOT READY!')
+        '''
+    Mesh selected faces with input from
+    the user using a dialog box.
+    '''
+        if len(self.model.selected_faces) == 0:
+            print('\n\tNo face currently selected.')
+        else:
+            elm_size = 5.
+            text, ok = QtWidgets.QInputDialog.getText(self, 'Mesh Selected Faces', 'Face element size:', text=str(elm_size))
+            if ok:
+                try:
+                    elm_size = float(text)
+                except ValueError:
+                    print(f'\n\tWARNING!!! {text} is not a valid element size')
+                else:
+                    for f in self.model.selected_faces:
+                        self.model.mesher.meshFace(self.model.selected_faces[f],seeded=True,element_size=float(text))
+                        self.model.currentPart.generateDisplayLists('mesh')
+                        self.btnViewMeshAction()
     def meshPart(self):
-        print('NOT READY!')
+        '''
+    Mesh current part with input from
+    the user using a dialog box.
+    '''
+        if self.model.currentPart == None:
+            print('\n\tNo part currently selected.')
+        else:
+            elm_size = 5.
+            text, ok = QtWidgets.QInputDialog.getText(self, 'Mesh Current Part', 'Part element size:', text=str(elm_size))
+            if ok:
+                try:
+                    elm_size = float(text)
+                except ValueError:
+                    print(f'\n\tWARNING!!! {text} is not a valid element size')
+                else:
+                    if self.model.currentPart != None:
+                        self.model.mesher.meshSolid(self.model.currentPart,float(text))
+                        self.model.currentPart.generateDisplayLists('mesh')
+                        self.btnViewMeshAction()
+
+
 
     def highlightNode(self):
         print('NOT READY!')
@@ -1261,6 +1335,8 @@ is an OpenGL widget running inside this framework.
             self.viewer.viewAssembly = False
         else:
             self.viewer.viewAssembly = True
+        self.model.selectOption = 'Lines'
+        self.viewer.updateSelected()
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  ASSEMBLY  ')
         glClearColor(self.viewer.colors['background_pre'][0], 
@@ -1274,6 +1350,8 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewGeometry = True
         self.viewer.viewMesh = False
         self.viewer.viewResults = False
+        self.model.selectOption = 'Lines'
+        self.viewer.updateSelected()
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  GEOMETRY  ')
         glClearColor(self.viewer.colors['background_pre'][0], 
@@ -1287,6 +1365,8 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewGeometry = False
         self.viewer.viewMesh = True
         self.viewer.viewResults = False
+        self.model.selectOption = 'Nodes'
+        self.viewer.updateSelected()
         self.viewer.updateDisplayList()
         self.statusBar().showMessage('  MESH  ')
         glClearColor(self.viewer.colors['background_pre'][0], 
@@ -1365,6 +1445,7 @@ is an OpenGL widget running inside this framework.
         self.viewer.viewConstraints = False
         self.viewer.viewSolutions = False
         self.viewer.updateDisplayList()
+        self.viewer.updateSelected()
         self.statusBar().showMessage('  RESULTS  ')
         glClearColor(self.viewer.colors['background_post'][0], 
                      self.viewer.colors['background_post'][1], 

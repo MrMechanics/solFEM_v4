@@ -15,6 +15,7 @@ import random
 
 import numpy as np
 from scipy.spatial import Delaunay, KDTree
+from scipy.interpolate import interp1d
 from geometries import *
 
 import matplotlib.pyplot as plt # for debugging
@@ -36,6 +37,26 @@ meshes from scratch.
 
 
 
+    def seedLine(self,line,element_size,weight=None):
+        '''
+    Creates seeds at coordinates between start point
+    and end point of line. At least 2 seeds (start and
+    stop), and the rest spaced out between those.
+    '''
+        points = [p.coordinates for p in line.points]
+#        print(f'element_size: {element_size}')
+        n_seeds = int(round(line.length/element_size))
+#        print(f'points: {points}')
+#        print(f'n_seeds: {n_seeds}')
+
+        line.seeds = []
+        if n_seeds <= 2:
+            n_seeds = 2
+            line.seeds.append(points[0])
+            line.seeds.append(points[-1])
+        else:
+            line.seeds = self.interpolateCurve(points, n_seeds)
+#        print(f'seeds: {seeds}')
 
 
     def meshFace(self,face,seeded=False):
@@ -391,7 +412,7 @@ meshes from scratch.
 
 
 
-    def meshFace(self,face,seeded=False):
+    def meshFace(self,face,seeded=False,element_size=5.):
         '''
     Creates a surface mesh for a given Face based on
     either the seeded edges or all the points on the
@@ -405,39 +426,46 @@ meshes from scratch.
             # add extra points on edge of cylinder so there are an
             # equal amount of points on that as there is on the arcs
             if face.type == 'cylindrical':
-                smallest_length = 10e5
-                for e in face.edges:
-                    for p in range(len(face.edges[e].points)-1):
-                        if np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p+1]) < smallest_length:
-                            smallest_length = np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p+1])
-                new_points_e = {}
-                new_points = np.empty((0, 3))
-                for e in face.edges:
-                    new_points_e[e] = []
-                    for p in range(len(face.edges[e].points)):
-                        if abs(np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p-1]) - smallest_length) < 0.1:
-                            new_points_e[e].append(face.edges[e].points[p])
-                        else:
-                            inserts = int(np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p-1])/smallest_length) + 1 
-                            points = face.edges[e].points
-                            for i in range(inserts-1):
-                                new_points_e[e].append([points[p-1][0]+(i+1)*(points[p][0]-points[p-1][0])/inserts,
-                                                        points[p-1][1]+(i+1)*(points[p][1]-points[p-1][1])/inserts,
-                                                        points[p-1][2]+(i+1)*(points[p][2]-points[p-1][2])/inserts])
-                            new_points_e[e].append(points[p])
-                    new_points_e[e] = np.array(new_points_e[e])
-                    new_points = np.vstack([new_points,new_points_e[e]])
+                if not seeded:
+                    smallest_length = 10e5
+                    for e in face.edges:
+                        for p in range(len(face.edges[e].points)-1):
+                            if np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p+1]) < smallest_length:
+                                smallest_length = np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p+1])
+                    new_points_e = {}
+                    new_points = np.empty((0, 3))
+                    for e in face.edges:
+                        new_points_e[e] = []
+                        for p in range(len(face.edges[e].points)):
+                            if abs(np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p-1]) - smallest_length) < 0.1:
+                                new_points_e[e].append(face.edges[e].points[p])
+                            else:
+                                inserts = int(np.linalg.norm(face.edges[e].points[p]-face.edges[e].points[p-1])/smallest_length) + 1 
+                                points = face.edges[e].points
+                                for i in range(inserts-1):
+                                    new_points_e[e].append([points[p-1][0]+(i+1)*(points[p][0]-points[p-1][0])/inserts,
+                                                            points[p-1][1]+(i+1)*(points[p][1]-points[p-1][1])/inserts,
+                                                            points[p-1][2]+(i+1)*(points[p][2]-points[p-1][2])/inserts])
+                                new_points_e[e].append(points[p])
+                        new_points_e[e] = np.array(new_points_e[e])
+                        new_points = np.vstack([new_points,new_points_e[e]])
 
             # move all points so centroid is at origin
             centered = np.empty((0, 3))
             centered_e = {}
             for e in face.edges:
                 if face.type == 'plane':
-                    centered_e[e] = face.edges[e].points - face.centroid_np
+                    if not seeded:
+                        centered_e[e] = face.edges[e].points - face.centroid_np
+                    else:
+                        centered_e[e] = face.edges[e].seeds - face.centroid_np
                 elif face.type in ['cylindrical', 'toroidal', 'conical']:
-                    centered_e[e] = face.edges[e].points - np.array(face.normal[0].coordinates)
-                    if face.type == 'cylindrical':
-                        centered_e[e] = new_points_e[e] - np.array(face.normal[0].coordinates)
+                    if not seeded:
+                        centered_e[e] = face.edges[e].points - np.array(face.normal[0].coordinates)
+                        if face.type == 'cylindrical':
+                            centered_e[e] = new_points_e[e] - np.array(face.normal[0].coordinates)
+                    else:
+                        centered_e[e] = face.edges[e].seeds - np.array(face.normal[0].coordinates)
                 centered = np.vstack([centered,centered_e[e]])
 
             # flip to x-y plane
@@ -509,19 +537,31 @@ meshes from scratch.
                 for l in face.edges[e].lines:
                     if face.edges[e].lines[l].length < cell_size:
                         cell_size = face.edges[e].lines[l].length
-            if face.type == 'plane':
-                cell_size = cell_size*0.7
-            elif face.type in ['toroidal', 'cylindrical', 'conical']:
-                cell_size = cell_size*0.1
+            if not seeded:
+                if face.type == 'plane':
+                    cell_size = cell_size*0.7
+                elif face.type in ['toroidal', 'cylindrical', 'conical']:
+                    cell_size = cell_size*0.1
+            else:
+                cell_size = element_size
             outside_point = np.min(converted, axis=0) - 23
             outside_point[0] -= 0.666*np.pi
             internal = self.bridson_sampling_2D(max_min, converted_e, converted, cell_size, outside_point)
+#            if seeded:
+#                fig = plt.gcf()
+#                fig.set_size_inches(8., 8.)
+#                plt.axis([max_min[0]-1,max_min[2]+1,max_min[1]-1,max_min[3]+1])
+#                for p in internal:
+#                    plt.plot(p[0], p[1], 'o', color='green')
+#                for p in converted:
+#                    plt.plot(p[0], p[1], 'o', color='blue')
+#                plt.show() 
 
             # genrate triangles from face points and remove those that are outside edges
             tri = Delaunay(internal[:,:2], qhull_options='Qt QJ')
             nodes, elements = self.keep_internal_triangles_2D(converted_e, internal, tri.simplices, outside_point)
-
-#            if face.type == 'plane':
+            
+#            if seeded:
 #                self.plot_2D_face_mesh(nodes,elements,max_min[0],max_min[1],max_min[2],max_min[3])       
 
             # convert back from parameter space
@@ -553,16 +593,19 @@ meshes from scratch.
                 if face.normal_v == Vector3D(0,0,-1):
                     for elm in elements:
                         elements[elm] = elements[elm][::-1]
-            face.g_mesh['nodes'] = nodes
-            face.g_mesh['elements'] = elements
-
+            if not seeded:
+                face.g_mesh['nodes'] = nodes
+                face.g_mesh['elements'] = elements
+            else:
+                face.mesh['nodes'] = nodes
+                face.mesh['elements'] = elements
 
 
 
         
     
     
-    def meshSolid(self,part):
+    def meshSolid(self,part,element_size):
         '''
     Creates a tetrahedral mesh for a given solid part
     using the seeded edges of that part. It first uses
@@ -570,7 +613,27 @@ meshes from scratch.
     then fill in the volume.
     '''
         nodes = {}
-        tetrahedrons = {}
+        elements = {}
+
+        # first mesh any faces that have not already been meshed
+        for f in part.faces:
+            if len(part.faces[f].mesh['elements']) == 0:
+                self.meshFace(part.faces[f],True,element_size)
+        
+        # next use the face meshes to generate nodes inside the volume
+#        internal = self.bridson_sampling_3D(max_min, converted_e, converted, cell_size, outside_point)
+        
+        # next use face meshes and nodes inside volume to generate tetrahedra
+        
+        
+        # next remove tetrahedra that are located outside the volume
+        
+        
+        # next merge all nodes that are in the same location
+        
+        
+        # finally ensure any nodes that are located on a face are attached to that face
+
         
         return nodes, elements
     
@@ -583,6 +646,32 @@ meshes from scratch.
     # ------------
     # various helper functions 
     # --------------------------
+
+    def interpolateCurve(self, points, num_points):
+        '''
+     Creates a given number of points evenly spaced out among the
+     points that are already there.
+     '''
+        # Convert the list of points to a NumPy array
+        points = np.array(points)
+        # Calculate the cumulative distance along the curve
+        distances = np.cumsum(np.sqrt(np.sum(np.diff(points, axis=0)**2, axis=1)))
+        distances = np.insert(distances, 0, 0)  # Add a 0 at the beginning for the start
+        # Normalize the distances to the range [0, 1]
+        distances /= distances[-1]
+        # Interpolation functions for each dimension
+        interpolate_x = interp1d(distances, points[:, 0], kind='linear')
+        interpolate_y = interp1d(distances, points[:, 1], kind='linear')
+        interpolate_z = interp1d(distances, points[:, 2], kind='linear')
+        # Generate the evenly spaced points along the curve
+        new_distances = np.linspace(0, 1, num_points)
+        new_points = np.zeros((num_points, 3))
+        new_points[:, 0] = interpolate_x(new_distances)
+        new_points[:, 1] = interpolate_y(new_distances)
+        new_points[:, 2] = interpolate_z(new_distances)
+        return new_points
+
+
     def unit_vector(self, vector):
         '''
     Returns the unit vector of a vector.
@@ -621,7 +710,10 @@ meshes from scratch.
     # base_point is a point on the cylinder's axis
     # point is the Cartesian coordinate of the edge point
     def cylindrical_coordinates(self, point, base_point, radius, cylinder_axis, reverse=False):
-
+        '''
+     Convert Cartesian coordinates to 2D cylindrical coordinates [z, theta], 
+     or back to cartesian coordinates from toroidal coordinates [x,y,z].
+     '''
         if reverse:
             z = point[0]
             theta = point[1]
@@ -649,6 +741,10 @@ meshes from scratch.
 
 
     def correct_angular_discontinuity(self,points,xy=1):
+        '''
+     Corrects angle from -pi to plus pi or the other way around
+     depending on neighbouring points.
+     '''
         corrected_points = points.copy()
         for i in range(1, len(points)):
             delta_theta = corrected_points[i][xy] - corrected_points[i - 1][xy]
@@ -660,6 +756,10 @@ meshes from scratch.
 
 
     def toroidal_coordinates(self, point, base_point, R, r, torus_normal, reverse=False):
+        '''
+     Convert Cartesian coordinates to 2D toroidal coordinates [phi, theta], 
+     or back to cartesian coordinates from toroidal coordinates [x,y,z].
+     '''
         if reverse:
             phi = point[0]
             theta = point[1]
@@ -722,6 +822,9 @@ meshes from scratch.
 
 
     def bridson_sampling_2D(self, max_min, edges, points, radius, outside_point, k=30):
+        '''
+     Generates points evenly spaced out inside the area given by a set of edges.
+     '''        
         start_time = time.time()
 #        print('\n\nStarting bridson_sampling_2D() ...')
         width = max_min[2]-max_min[0]
@@ -765,10 +868,16 @@ meshes from scratch.
     
     
     def grid_index_2D(self, point, cell_size, x_min, y_min):
+        '''
+     Helper function for bridson_sampling_2D.
+     '''
         return int((point[0] - x_min) / cell_size), int((point[1] - y_min) / cell_size)
     
     
     def is_valid_point_2D(self, new_point, grid, cell_size, radius, x_min, y_min):
+        '''
+     Helper function for bridson_sampling_2D.
+     '''
         x, y = self.grid_index_2D(new_point, cell_size, x_min, y_min)
         for i in range(max(0, x - 2), min(x + 3, grid.shape[0])):
             for j in range(max(0, y - 2), min(y + 3, grid.shape[1])):
@@ -781,6 +890,9 @@ meshes from scratch.
     
     
     def get_point_in_annulus_2D(self, center_point, radius):
+        '''
+     Helper function for bridson_sampling_2D.
+     '''
         random_angle_phi = 2 * np.pi * random.random()
         random_radius = random.uniform(radius, 2 * radius)
         random_x = center_point[0] + random_radius * np.cos(random_angle_phi)
@@ -789,6 +901,9 @@ meshes from scratch.
     
     
     def is_on_boundary_2D(self, point, edges):
+        '''
+     Helper function for bridson_sampling_2D.
+     '''
         for e in edges:
             for p in edges[e]:
                 if np.linalg.norm(point - p[:2]) < 0.2:
@@ -796,6 +911,9 @@ meshes from scratch.
         
         
     def is_within_boundary_2D(self, point, edges, outside_point):
+        '''
+     Helper function for bridson_sampling_2D.
+     '''
         intersections = 0
         for e in edges:
             for p in range(len(edges[e])):
@@ -806,12 +924,18 @@ meshes from scratch.
 
        
     def does_intersect_2D(self, p1, p2, line_segment):
+        '''
+     Helper function for bridson_sampling_2D.
+     '''
         if self.intersect_2D(p1, p2, line_segment[0], line_segment[1]):
             return True
         return False
 
 
     def intersect_2D(self, p1, p2, p3, p4):
+        '''
+     Helper function for bridson_sampling_2D.
+     '''
         d = (p2[0] - p1[0]) * (p4[1] - p3[1]) - (p2[1] - p1[1]) * (p4[0] - p3[0])
         if d == 0:
             return False
@@ -823,6 +947,9 @@ meshes from scratch.
     
 
     def is_flat_triangle_2D(self, p1, p2, p3):
+        '''
+     Helper function for keep_internal_triangles_2D.
+     '''
         AB = p2 - p1
         AC = p3 - p1
         normal = np.cross(AB, AC)
@@ -832,7 +959,9 @@ meshes from scratch.
     
     
     def keep_internal_triangles_2D(self, edges, points, triangles, outside_point):
-        # remove all triangles that are outside the boundary
+        '''
+     Remove all triangles that are outside the edges boundary.
+     '''
         internal_triangles = []
         for triangle in triangles:
             keep_triangle = True
