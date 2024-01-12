@@ -566,6 +566,7 @@ class Edge(object):
         self.number = number
         self.lines  = {}
         self.points = []
+        self.seeds  = []
     def getEdgePoints(self):
         # first rearrange line directions to make sure
         # they all form a continous loop around the edge
@@ -654,6 +655,37 @@ class Edge(object):
         self.points = np.array(self.points)
         self.centroid_np = np.mean(self.points,axis=0)
         self.centroid = Point3D(self.centroid_np[0], self.centroid_np[1], self.centroid_np[2])
+    def updateSeeds(self):
+        self.seeds = []
+        # first rearrange line directions to make sure
+        # they all form a continous loop around the edge
+        keys = list(self.lines.keys())
+        if len(self.lines) != 1:
+            for check in range(3):
+                if np.linalg.norm(self.lines[keys[0]].seeds[0][0] - self.lines[keys[-1]].seeds[-1][0]) < 0.1 and \
+                   np.linalg.norm(self.lines[keys[0]].seeds[0][1] - self.lines[keys[-1]].seeds[-1][1]) < 0.1 and \
+                   np.linalg.norm(self.lines[keys[0]].seeds[0][2] - self.lines[keys[-1]].seeds[-1][2]) < 0.1:
+                    break
+                else:
+                    if check == 0:
+                        self.lines[keys[-1]].seeds = self.lines[keys[-1]].seeds[::-1]
+                    elif check == 1:
+                        self.lines[keys[0]].seeds = self.lines[keys[0]].seeds[::-1]
+                    elif check == 2:
+                        self.lines[keys[-1]].seeds = self.lines[keys[-1]].seeds[::-1]
+            for l in range(len(self.lines)):
+                if not np.linalg.norm(np.array(self.lines[keys[l-1]].seeds[-1]) - np.array(self.lines[keys[l]].seeds[0])) < 0.1:
+                    self.lines[keys[l]].seeds = self.lines[keys[l]].seeds[::-1]
+
+#            for l in range(len(self.lines)):
+#                if not np.linalg.norm(self.lines[keys[l-1]].points[-1] - self.lines[keys[l]].points[0]) < 0.1:
+#                    self.lines[keys[l]].points = self.lines[keys[l]].points[::-1]
+        
+        for l in self.lines:
+            seeds = deepcopy(self.lines[l].seeds)
+            # add the seeds to the edge seeds
+            for s in seeds[:-1]:
+                self.seeds.append(s)
 
 
 
@@ -663,6 +695,7 @@ class Face(object):
         self.number = number
         self.edges  = {}
         self.points = []
+        self.seeds  = []
         self.type   = face_type
         self.g_mesh = {}                # for geometry rendering
         self.mesh   = {'nodes':     {}, # for finite element

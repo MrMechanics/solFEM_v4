@@ -61,16 +61,19 @@ user to interact with.
         self.view_scope = {'max': [ 1., 1., 1.],
                            'min': [-1.,-1.,-1.]}
         self.view_radius = 2.
-        self.colors = {'part_lines':         (0.05, 0.10, 0.05, 1.0),
-                       'part_faces':         (0.66796875, 0.6171875, 0.44921875, 1.0),
+        self.colors = {'part_lines':         (0.37109375, 0.43359375, 0.3671875,  1.0),
+                       'part_faces':         (0.66796875, 0.6171875, 0.44921875,  1.0),
                        'part_faces_inside':  (0.62, 0.63, 0.19, 1.0),
-                       'element_lines_pre':  (0.50, 0.50, 0.50, 1.0),
-                       'element_lines_post': (0.50, 0.50, 0.50, 1.0),
-                       'element_faces_pre':  (0.336, 0.447, 0.588, 1.0),
-                       'element_faces_post': (0.50, 0.50, 0.50, 1.0)}
+                       'element_lines_pre':  (0.37109375, 0.43359375, 0.3671875,  1.0),
+                       'element_lines_post': (0.328125,   0.3984375,  0.41796875, 1.0),
+                       'element_faces_pre':  (0.4609375,  0.703125,   0.46484375, 1.0),
+                       'element_faces_post': (0.46484375, 0.640625,   0.6875,     1.0),
+                       'nodes_pre':          (0.37109375, 0.43359375, 0.3671875,  1.0),
+                       'nodes_post':         (0.328125,   0.3984375,  0.41796875, 1.0),
+                       'seeds':              (0.6484375,  0.8046875,  0.65234375, 1.0)}
         self.displayLists = {'nodes':       None,
                              'wireframe':   None,
-                             'shaded':      None,
+                             'elements':    None,
                              'lines':       None,
                              'faces':       None,
                              'seeds':       None}
@@ -167,24 +170,6 @@ user to interact with.
             self.faces[f].getFacePoints()
             self.mesher.meshFace(self.faces[f])
 
-
-#        print('number of faces:', len(self.faces))
-#        print(self.faces.keys())
-#        for f in self.faces:
-#            print('\n\nface:', f)
-#            print('face type:', self.faces[f].type)
-#            print('face points:', self.faces[f].points)
-#            print('face centroid:', self.faces[f].centroid)
-#            if self.faces[f].type == 'plane':
-#                print('face_normal:', self.faces[f].normal_v)
-#            print('face_edges:', self.faces[f].edges.keys(), end='')
-#            for e in self.faces[f].edges:
-#                print('edge_points:\n', self.faces[f].edges[e].points)
-#                print('centroid:', self.faces[f].edges[e].centroid)
-#                print('\nedge', e, 'lines:')
-#                for l in self.faces[f].edges[e].lines:
-#                    print(l, end=', ')
-
         print('\n\t New Part: '+self.name)
         print('/----- ---------- ------  --------- ------\\')
         if len(geom.advanced_brep_shape_representation) == 1:
@@ -216,6 +201,10 @@ user to interact with.
         self.view_radius = max((self.x_max - self.x_min, self.y_max - self.y_min, self.z_max-self.z_min))*0.5
         self.view_scope = {'max': [self.x_max, self.y_max, self.z_max],
                            'min': [self.x_min, self.y_min, self.z_min]}
+        for l in self.lines:
+            self.mesher.seedLine(self.lines[l],5.)
+        for e in self.edges:
+            self.edges[e].updateSeeds()
         self.generateDisplayLists('geometry')
 
 
@@ -233,146 +222,217 @@ user to interact with.
     
     
     
-    def generateDisplayLists(self,displ_type='geometry'):
+    def generateDisplayLists(self,displ_type='geometry',draw_lines=True,draw_faces=True,draw_seeds=True):
         '''
     Generates an updated displaylist for the part to
     be rendered in the viewer.
     '''
+#        print(f'self.displayLists (before): {self.displayLists}')
         if displ_type == 'geometry':
-            self.displayLists['lines'] = glGenLists(1)
-            self.displayLists['faces'] = glGenLists(1)
-            self.displayLists['seeds'] = glGenLists(1)
-
-
-
+#            print('INSIDE GEOMETRY PART OF generateDisplayLists()')
             # -----------
             # DRAW FACES
             # -------------------
-            glNewList(self.displayLists['faces'], GL_COMPILE)
-            for f in self.faces:
-                if self.faces[f].type in ['conical', 'toroidal', 'plane', 'cylindrical']:
-                    glColor3f(self.colors['part_faces'][0], 
-                              self.colors['part_faces'][1],
-                              self.colors['part_faces'][2])
-                    for e in self.faces[f].g_mesh['elements']:
-                        glBegin(GL_TRIANGLES)
-                        elm = self.faces[f].g_mesh['elements'][e]
-                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
-                                   self.faces[f].g_mesh['nodes'][elm[0]][1],
-                                   self.faces[f].g_mesh['nodes'][elm[0]][2])
-                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
-                                   self.faces[f].g_mesh['nodes'][elm[1]][1],
-                                   self.faces[f].g_mesh['nodes'][elm[1]][2])
-                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
-                                   self.faces[f].g_mesh['nodes'][elm[2]][1],
-                                   self.faces[f].g_mesh['nodes'][elm[2]][2])
-                        glEnd()
-                        glBegin(GL_TRIANGLES)
-                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
-                                   self.faces[f].g_mesh['nodes'][elm[2]][1],
-                                   self.faces[f].g_mesh['nodes'][elm[2]][2])
-                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
-                                   self.faces[f].g_mesh['nodes'][elm[1]][1],
-                                   self.faces[f].g_mesh['nodes'][elm[1]][2])
-                        glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
-                                   self.faces[f].g_mesh['nodes'][elm[0]][1],
-                                   self.faces[f].g_mesh['nodes'][elm[0]][2])
-                        glEnd()
-                else:
-                    pass
-            glEndList()
+            if draw_faces:
+                self.displayLists['faces'] = glGenLists(1)
+                glNewList(self.displayLists['faces'], GL_COMPILE)
+                for f in self.faces:
+                    if self.faces[f].type in ['conical', 'toroidal', 'plane', 'cylindrical']:
+                        glColor3f(self.colors['part_faces'][0], 
+                                  self.colors['part_faces'][1],
+                                  self.colors['part_faces'][2])
+                        for e in self.faces[f].g_mesh['elements']:
+                            glBegin(GL_TRIANGLES)
+                            elm = self.faces[f].g_mesh['elements'][e]
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
+                            glEnd()
+                            glBegin(GL_TRIANGLES)
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[2]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[2]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[1]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[1]][2])
+                            glVertex3f(self.faces[f].g_mesh['nodes'][elm[0]][0],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][1],
+                                       self.faces[f].g_mesh['nodes'][elm[0]][2])
+                            glEnd()
+                    else:
+                        pass
+                glEndList()
 
 
 
             # -----------
             # DRAW LINES
             # -------------------
-            glNewList(self.displayLists['lines'], GL_COMPILE)
-            glLineWidth(3.0)
-            glColor3f(self.colors['part_lines'][0], 
-                      self.colors['part_lines'][1],
-                      self.colors['part_lines'][2])
-            for l in self.lines:
-                if self.lines[l].type == 'line':
-                    glBegin(GL_LINES)
-                    glVertex3f(self.lines[l].points[0].x(),self.lines[l].points[0].y(),self.lines[l].points[0].z())
-                    glVertex3f(self.lines[l].points[1].x(),self.lines[l].points[1].y(),self.lines[l].points[1].z())
-                    glEnd()
-                elif self.lines[l].type == 'arc':
-                    for p in range(len(self.lines[l].points)-1):
+            if draw_lines:
+                self.displayLists['lines'] = glGenLists(1)
+                glNewList(self.displayLists['lines'], GL_COMPILE)
+                glLineWidth(3.0)
+                glColor3f(self.colors['part_lines'][0], 
+                          self.colors['part_lines'][1],
+                          self.colors['part_lines'][2])
+                glBegin(GL_LINES)
+                for l in self.lines:
+                    if self.lines[l].type == 'line':
+                        glVertex3f(self.lines[l].points[0].x(),self.lines[l].points[0].y(),self.lines[l].points[0].z())
+                        glVertex3f(self.lines[l].points[1].x(),self.lines[l].points[1].y(),self.lines[l].points[1].z())
+                    elif self.lines[l].type == 'arc':
+                        for p in range(len(self.lines[l].points)-1):
+                            glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
+                            glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                    elif self.lines[l].type == 'ellipse':
+                        for p in range(len(self.lines[l].points)-1):
+                            glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
+                            glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                    elif self.lines[l].type == 'spline':
+                        for p in range(len(self.lines[l].points)-1):
+                            glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
+                            glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                    else:
+                        pass
+                glEnd()
+    
+                # draw surface normals for debugging
+                for f in self.faces:
+                    if self.faces[f].type == 'planeiii':
+                        glColor3f(0.9,0,0)
                         glBegin(GL_LINES)
-                        glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
-                        glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                        glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                        glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
                         glEnd()
-                elif self.lines[l].type == 'ellipse':
-                    for p in range(len(self.lines[l].points)-1):
+                    if self.faces[f].type == 'cylindricaliii':
+                        glColor3f(0.9,0,0)
+                        if self.faces[f].inwards == True:
+                            glColor3f(0,0.9,0)
                         glBegin(GL_LINES)
-                        glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
-                        glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                        glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                        glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
                         glEnd()
-                elif self.lines[l].type == 'spline':
-                    for p in range(len(self.lines[l].points)-1):
+                    if self.faces[f].type == 'toroidaliii':
+                        glColor3f(0.9,0,0)
+                        if self.faces[f].inwards == True:
+                            glColor3f(0,0.9,0)
                         glBegin(GL_LINES)
-                        glVertex3f(self.lines[l].points[p].x(),self.lines[l].points[p].y(),self.lines[l].points[p].z())
-                        glVertex3f(self.lines[l].points[p+1].x(),self.lines[l].points[p+1].y(),self.lines[l].points[p+1].z())
+                        glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                        glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
                         glEnd()
-                else:
-                    pass
-
-            # draw surface normals for debugging
-            for f in self.faces:
-                if self.faces[f].type == 'planeiii':
-                    glColor3f(0.9,0,0)
-                    glBegin(GL_LINES)
-                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
-                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
-                    glEnd()
-                if self.faces[f].type == 'cylindricaliii':
-                    glColor3f(0.9,0,0)
-                    if self.faces[f].inwards == True:
-                        glColor3f(0,0.9,0)
-                    glBegin(GL_LINES)
-                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
-                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
-                    glEnd()
-                if self.faces[f].type == 'toroidaliii':
-                    glColor3f(0.9,0,0)
-                    if self.faces[f].inwards == True:
-                        glColor3f(0,0.9,0)
-                    glBegin(GL_LINES)
-                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
-                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
-                    glEnd()
-                if self.faces[f].type == 'conical':
-                    glColor3f(0.9,0,0)
-                    if self.faces[f].inwards == True:
-                        glColor3f(0,0.9,0)
-                    glBegin(GL_LINES)
-                    glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
-                    glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
-                    glEnd()
-                    
-            glEndList()
+                    if self.faces[f].type == 'conicaliii':
+                        glColor3f(0.9,0,0)
+                        if self.faces[f].inwards == True:
+                            glColor3f(0,0.9,0)
+                        glBegin(GL_LINES)
+                        glVertex3f(self.faces[f].normal[0].x(),self.faces[f].normal[0].y(),self.faces[f].normal[0].z())
+                        glVertex3f(self.faces[f].normal[1].x(),self.faces[f].normal[1].y(),self.faces[f].normal[1].z())
+                        glEnd()
+                        
+                glEndList()
 
 
             
             # -----------
             # DRAW SEEDS
             # -------------------
-            glNewList(self.displayLists['seeds'], GL_COMPILE)
-
-            glPointSize(8.0)
-            glColor3f(0.4, 0.65, 0.4)
-            glBegin(GL_POINTS)
-            for e in self.edges:
-                for p in self.edges[e].points:
-                    glVertex3f(p[0],p[1],p[2])
-            glEnd()
-
-            glEndList()
+            if draw_seeds:
+                self.displayLists['seeds'] = glGenLists(1)
+                glNewList(self.displayLists['seeds'], GL_COMPILE)
+    
+                glPointSize(8.0)
+                glColor3f(self.colors['seeds'][0], 
+                          self.colors['seeds'][1],
+                          self.colors['seeds'][2])
+                glBegin(GL_POINTS)
+                for e in self.edges:
+                    for s in self.edges[e].seeds:
+                        glVertex3f(s[0],s[1],s[2])
+                glEnd()
+    
+                glEndList()
 
 
         elif displ_type == 'mesh':
-            pass
+#            print('INSIDE MESH PART OF generateDisplayLists()')
+            # -----------
+            # DRAW ELEMENT FACES
+            # -------------------
+            self.displayLists['elements'] = glGenLists(1)
+            glNewList(self.displayLists['elements'], GL_COMPILE)
+            for f in self.faces:
+                glColor3f(self.colors['element_faces_pre'][0], 
+                          self.colors['element_faces_pre'][1],
+                          self.colors['element_faces_pre'][2])
+                if len(self.faces[f].mesh['elements']) != 0:
+                    for e in self.faces[f].mesh['elements']:
+                        elm = self.faces[f].mesh['elements'][e]
+                        glBegin(GL_TRIANGLES)
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[0]][0],
+                                   self.faces[f].mesh['nodes'][elm[0]][1],
+                                   self.faces[f].mesh['nodes'][elm[0]][2])
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[1]][0],
+                                   self.faces[f].mesh['nodes'][elm[1]][1],
+                                   self.faces[f].mesh['nodes'][elm[1]][2])
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[2]][0],
+                                   self.faces[f].mesh['nodes'][elm[2]][1],
+                                   self.faces[f].mesh['nodes'][elm[2]][2])
+                        glEnd()
+                        glBegin(GL_TRIANGLES)
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[2]][0],
+                                   self.faces[f].mesh['nodes'][elm[2]][1],
+                                   self.faces[f].mesh['nodes'][elm[2]][2])
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[1]][0],
+                                   self.faces[f].mesh['nodes'][elm[1]][1],
+                                   self.faces[f].mesh['nodes'][elm[1]][2])
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[0]][0],
+                                   self.faces[f].mesh['nodes'][elm[0]][1],
+                                   self.faces[f].mesh['nodes'][elm[0]][2])
+                        glEnd()
+            glEndList()
+
+            # -----------
+            # DRAW ELEMENT LINES
+            # -------------------
+            self.displayLists['wireframe'] = glGenLists(1)
+            glNewList(self.displayLists['wireframe'], GL_COMPILE)
+            glLineWidth(3.0)
+            glColor3f(self.colors['element_lines_pre'][0], 
+                      self.colors['element_lines_pre'][1],
+                      self.colors['element_lines_pre'][2])
+            for f in self.faces:
+                if len(self.faces[f].mesh['elements']) != 0:
+                    glBegin(GL_LINES)
+                    for e in self.faces[f].mesh['elements']:
+                        elm = self.faces[f].mesh['elements'][e]
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[0]][0],
+                                   self.faces[f].mesh['nodes'][elm[0]][1],
+                                   self.faces[f].mesh['nodes'][elm[0]][2])
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[1]][0],
+                                   self.faces[f].mesh['nodes'][elm[1]][1],
+                                   self.faces[f].mesh['nodes'][elm[1]][2])
+            
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[1]][0],
+                                   self.faces[f].mesh['nodes'][elm[1]][1],
+                                   self.faces[f].mesh['nodes'][elm[1]][2])
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[2]][0],
+                                   self.faces[f].mesh['nodes'][elm[2]][1],
+                                   self.faces[f].mesh['nodes'][elm[2]][2])
+            
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[2]][0],
+                                   self.faces[f].mesh['nodes'][elm[2]][1],
+                                   self.faces[f].mesh['nodes'][elm[2]][2])
+                        glVertex3f(self.faces[f].mesh['nodes'][elm[0]][0],
+                                   self.faces[f].mesh['nodes'][elm[0]][1],
+                                   self.faces[f].mesh['nodes'][elm[0]][2])
+                    glEnd()
+            glEndList()
         else:
             pass
+#        print(f'self.displayLists (after): {self.displayLists}')
